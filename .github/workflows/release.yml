@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+    branches: [ci]
 
 permissions:
   contents: write
@@ -25,7 +26,7 @@ jobs:
             arch: x86_64
             ext: tar.gz
           - target: x86_64-apple-darwin
-            runner: macos-13
+            runner: macos-latest
             os: macos
             arch: x86_64
             ext: tar.gz
@@ -63,37 +64,13 @@ jobs:
       - name: Install Vulkan SDK (macOS)
         if: matrix.os == 'macos'
         run: |
-          curl -fsSL -o vulkan-sdk.dmg https://sdk.lunarg.com/sdk/download/latest/mac/vulkan-sdk.dmg
-          hdiutil attach vulkan-sdk.dmg -mountpoint /Volumes/VulkanSDK
-          # Find the installer app inside the DMG
-          installer_app=$(find /Volumes/VulkanSDK -name "InstallVulkan*.app" -maxdepth 1 | head -1)
-          if [ -z "$installer_app" ]; then
-            echo "No installer app found, looking for alternative install method..."
-            ls -la /Volumes/VulkanSDK/
-            # Try running the install script if present
-            if [ -f /Volumes/VulkanSDK/InstallVulkan.sh ]; then
-              sudo /Volumes/VulkanSDK/InstallVulkan.sh --accept-licenses --default-answer --confirm-command install
-            fi
-          else
-            sudo "$installer_app/Contents/MacOS/InstallVulkan" \
-              --accept-licenses --default-answer --confirm-command install
-          fi
-          hdiutil detach /Volumes/VulkanSDK
-          # Find the installed SDK version
-          SDK_PATH=$(ls -d /usr/local/share/vulkan/sdk/*/macOS 2>/dev/null | head -1 || echo "")
-          if [ -z "$SDK_PATH" ]; then
-            SDK_PATH=$(ls -d "$HOME/VulkanSDK"/*/macOS 2>/dev/null | head -1 || echo "")
-          fi
-          if [ -z "$SDK_PATH" ]; then
-            echo "ERROR: Could not find installed Vulkan SDK"
-            find /usr/local -name "vulkan" -type d 2>/dev/null
-            find "$HOME" -name "VulkanSDK" -type d 2>/dev/null
-            exit 1
-          fi
-          echo "VULKAN_SDK=$SDK_PATH" >> "$GITHUB_ENV"
+          brew install vulkan-headers vulkan-loader
+          echo "VULKAN_SDK=$(brew --prefix)" >> "$GITHUB_ENV"
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+          cargo build --release --examples --target ${{ matrix.target }}
 
       - name: Package (Windows)
         if: matrix.os == 'windows'
@@ -102,6 +79,8 @@ jobs:
           staging="hearth-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.arch }}"
           mkdir "$staging"
           cp target/${{ matrix.target }}/release/hearth.exe "$staging/"
+          cp target/${{ matrix.target }}/release/examples/*.exe "$staging/"
+          cp models/*.py "$staging/"
           7z a "$staging.zip" "$staging"
 
       - name: Package (Unix)
@@ -110,6 +89,8 @@ jobs:
           staging="hearth-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.arch }}"
           mkdir "$staging"
           cp target/${{ matrix.target }}/release/hearth "$staging/"
+          cp target/${{ matrix.target }}/release/examples/{estimate_depth,generate,generate_xl,gpu_info} "$staging/"
+          cp models/*.py "$staging/"
           tar czf "$staging.tar.gz" "$staging"
 
       - name: Upload artifact
@@ -120,6 +101,7 @@ jobs:
 
   release:
     needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
