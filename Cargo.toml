@@ -68,6 +68,12 @@ base64 = "0.22"
 [dev-dependencies]
 # CLI parsing for examples
 clap = { version = "4", features = ["derive"] }
+# For SageAttention kernel tests
+burn-cubecl = { path = "vendor/burn/crates/burn-cubecl" }
+cubek = { path = "vendor/cubek/crates/cubek" }
+cubecl = { path = "vendor/cubecl/crates/cubecl" }
+cubecl-wgpu = { path = "vendor/cubecl/crates/cubecl-wgpu" }
+bytemuck = "1.14"
 # HTTP client for server integration tests
 reqwest = { version = "0.13", features = ["json"] }
 # Extra tokio features for tests (fs for directory creation)
@@ -94,7 +100,7 @@ burn-std = { path = "vendor/burn/crates/burn-std" }
 burn-tensor = { path = "vendor/burn/crates/burn-tensor" }
 burn-wgpu = { path = "vendor/burn/crates/burn-wgpu" }
 
-# cubecl patches for exp2/log2 and SPIR-V caching
+# cubecl patches for SageAttention DP4a support
 cubecl = { path = "vendor/cubecl/crates/cubecl" }
 cubecl-common = { path = "vendor/cubecl/crates/cubecl-common" }
 cubecl-core = { path = "vendor/cubecl/crates/cubecl-core" }
@@ -107,6 +113,6 @@ cubecl-spirv = { path = "vendor/cubecl/crates/cubecl-spirv" }
 cubecl-std = { path = "vendor/cubecl/crates/cubecl-std" }
 cubecl-wgpu = { path = "vendor/cubecl/crates/cubecl-wgpu" }
 
-# cubek patches for attention
+# cubek patches for SageAttention
 cubek = { path = "vendor/cubek/crates/cubek" }
 cubek-attention = { path = "vendor/cubek/crates/cubek-attention" }
