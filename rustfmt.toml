@@ -1,0 +1,8 @@
+# See: https://rust-lang.github.io/rustfmt
+
+# Stable options
+edition = "2024"
+
+# Unstable options
+group_imports = "One"
+imports_granularity = "Crate"

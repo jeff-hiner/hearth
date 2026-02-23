@@ -1,0 +1,112 @@
+[package]
+name = "hearth"
+authors = ["Jeff Hiner <37913568+jeff-hiner@users.noreply.github.com>"]
+version = "0.0.1"
+edition = "2024"
+description = "A portable Rust backend for diffusion model inference"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = ["gpu-vulkan-f16"]
+# GPU backends (SPIR-V only)
+gpu-vulkan-f16 = [
+    "burn/vulkan",
+    "burn/fusion",
+    "burn/autotune",
+    "dep:wgpu",
+] # Vulkan + SPIR-V + f16
+gpu-vulkan-bf16 = [
+    "burn/vulkan",
+    "burn/fusion",
+    "burn/autotune",
+    "dep:wgpu",
+] # Vulkan + SPIR-V + bf16
+
+[dependencies]
+# GPU abstraction (pinned to match burn-wgpu)
+wgpu = { version = "26", optional = true }
+
+# ML framework - backend selected via features
+burn = { version = "0.20.0", default-features = false, features = ["std"] }
+
+# Async runtime
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+# Logging/tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Model loading
+safetensors = "0.5"
+memmap2 = "0.9"
+half = "2.4"
+thiserror = "2.0.17"
+
+# Tokenization (NFC normalization for CLIP tokenizer)
+unicode-normalization = "0.1"
+
+# JSON serialization (node registry, API)
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Image I/O (SaveImage node, API responses)
+image = { version = "0.25", default-features = false, features = [
+    "png",
+    "jpeg",
+] }
+
+# HTTP server
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["cors"] }
+
+# Unique IDs for prompt tracking
+uuid = { version = "1", features = ["v4"] }
+
+# Base64 encoding for API image responses
+base64 = "0.22"
+
+[dev-dependencies]
+# CLI parsing for examples
+clap = { version = "4", features = ["derive"] }
+# HTTP client for server integration tests
+reqwest = { version = "0.13", features = ["json"] }
+# Extra tokio features for tests (fs for directory creation)
+tokio = { version = "1", features = ["fs"] }
+
+[patch.crates-io]
+# Fix for cube count overflow in large matmul operations (4096x4096 attention)
+# See: https://github.com/tracel-ai/cubek/issues/TBD
+cubek-matmul = { path = "vendor/cubek/crates/cubek-matmul" }
+
+# Fix for f16 precision overflow in unary ops (exp, log, erf, recip)
+# These ops are promoted to f32 to match PyTorch autocast behavior and prevent NaN
+# in diffusion model workloads. See: https://github.com/tracel-ai/burn/issues/TBD
+burn = { path = "vendor/burn/crates/burn" }
+burn-backend = { path = "vendor/burn/crates/burn-backend" }
+burn-core = { path = "vendor/burn/crates/burn-core" }
+burn-cubecl = { path = "vendor/burn/crates/burn-cubecl" }
+burn-cubecl-fusion = { path = "vendor/burn/crates/burn-cubecl-fusion" }
+burn-fusion = { path = "vendor/burn/crates/burn-fusion" }
+burn-ir = { path = "vendor/burn/crates/burn-ir" }
+burn-nn = { path = "vendor/burn/crates/burn-nn" }
+burn-optim = { path = "vendor/burn/crates/burn-optim" }
+burn-std = { path = "vendor/burn/crates/burn-std" }
+burn-tensor = { path = "vendor/burn/crates/burn-tensor" }
+burn-wgpu = { path = "vendor/burn/crates/burn-wgpu" }
+
+# cubecl patches for exp2/log2 and SPIR-V caching
+cubecl = { path = "vendor/cubecl/crates/cubecl" }
+cubecl-common = { path = "vendor/cubecl/crates/cubecl-common" }
+cubecl-core = { path = "vendor/cubecl/crates/cubecl-core" }
+cubecl-ir = { path = "vendor/cubecl/crates/cubecl-ir" }
+cubecl-macros = { path = "vendor/cubecl/crates/cubecl-macros" }
+cubecl-macros-internal = { path = "vendor/cubecl/crates/cubecl-macros-internal" }
+cubecl-opt = { path = "vendor/cubecl/crates/cubecl-opt" }
+cubecl-runtime = { path = "vendor/cubecl/crates/cubecl-runtime" }
+cubecl-spirv = { path = "vendor/cubecl/crates/cubecl-spirv" }
+cubecl-std = { path = "vendor/cubecl/crates/cubecl-std" }
+cubecl-wgpu = { path = "vendor/cubecl/crates/cubecl-wgpu" }
+
+# cubek patches for attention
+cubek = { path = "vendor/cubek/crates/cubek" }
+cubek-attention = { path = "vendor/cubek/crates/cubek-attention" }

@@ -1,0 +1,12 @@
+[submodule "vendor/burn"]
+	path = vendor/burn
+	url = git@github.com:jeff-hiner/burn.git
+	branch = fp16_fixes
+[submodule "vendor/cubek"]
+	path = vendor/cubek
+	url = git@github.com:jeff-hiner/cubek.git
+	branch = fix/matmul-cube-count-overflow
+[submodule "vendor/cubecl"]
+	path = vendor/cubecl
+	url = https://github.com/jeff-hiner/cubecl.git
+	branch = add_missing_ops

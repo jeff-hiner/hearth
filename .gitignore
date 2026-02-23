@@ -1,0 +1,15 @@
+/target
+/output
+
+# Model weights (large files, download separately)
+/models/**/*
+!/models/**/
+!/models/**/.gitkeep
+!/models/**/*.py
+
+# AI tooling
+.claude/
+
+# Python used for test example generation
+.venv/
+__pycache__/
