@@ -15,11 +15,13 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Rust stable + nightly
-        uses: dtolnay/rust-toolchain@stable
-      - uses: dtolnay/rust-toolchain@nightly
+      - name: Install Rust nightly (for rustfmt)
+        uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
