@@ -1,0 +1,11 @@
+# Increase stack size on Windows to avoid stack overflow in SPIR-V codegen.
+# The default Windows stack is 1MB; SPIR-V shader compilation can exceed this
+# when running complex models (CLIP + UNet + VAE) together.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-args=/STACK:8388608"]
+
+# The Vulkan/fusion backend generates deep call stacks in debug builds.
+# Rust test threads default to 8MB which is insufficient for matmul and
+# UNet loading. 16MB gives comfortable headroom.
+[env]
+RUST_MIN_STACK = "16777216"
