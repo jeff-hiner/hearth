@@ -904,6 +904,7 @@ fn vae_roundtrip_sd15() {
 ///
 /// Loads a 1024x1024 PNG, encodes to latent, decodes back, and compares.
 #[test]
+#[ignore = "SDXL VAE roundtrip is slow and triggers Vulkan validation errors"]
 fn vae_roundtrip_sdxl() {
     let png_path = Path::new("output/cat_fp16fix.png");
     if !png_path.exists() {

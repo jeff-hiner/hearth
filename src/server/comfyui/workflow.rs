@@ -73,7 +73,9 @@ pub(super) fn parse_workflow(
             ComfyNode::ControlNetLoader(i) => {
                 Box::new(ControlNetLoader::new(i.control_net_name.clone()))
             }
-            ComfyNode::ControlNetApply(i) => Box::new(ControlNetApply::new(i.strength as f32)),
+            ComfyNode::ControlNetApply(i) => {
+                Box::new(ControlNetApply::new(i.strength as f32, 0.0, 1.0))
+            }
             ComfyNode::VAEDecode(_) => Box::new(VaeDecode),
             ComfyNode::VAEEncode(_) => Box::new(VaeEncode),
             ComfyNode::SaveImage(i) => Box::new(SaveImage::new(i.filename_prefix.clone())),

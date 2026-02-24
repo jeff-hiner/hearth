@@ -84,7 +84,15 @@ async fn txt2img_returns_base64_png() {
 
     let client = reqwest::Client::new();
 
-    // Verify non-generation endpoints work first
+    // --- /internal/ping ---
+    let resp = client
+        .get(format!("{base_url}/internal/ping"))
+        .send()
+        .await
+        .expect("ping request failed");
+    assert_eq!(resp.status(), 200, "ping should return 200");
+
+    // --- /sdapi/v1/sd-models (verify hash fields) ---
     let resp = client
         .get(format!("{base_url}/sdapi/v1/sd-models"))
         .send()
@@ -97,13 +105,155 @@ async fn txt2img_returns_base64_png() {
         !models.is_empty(),
         "no checkpoints found in models/checkpoints/"
     );
+    for model in &models {
+        assert_eq!(
+            model.sha256.len(),
+            64,
+            "sha256 should be 64 hex chars: {}",
+            model.model_name
+        );
+        assert!(
+            model.sha256.chars().all(|c| c.is_ascii_hexdigit()),
+            "sha256 should be hex: {}",
+            model.sha256
+        );
+        assert_eq!(
+            model.hash,
+            &model.sha256[..10],
+            "hash should be first 10 chars of sha256"
+        );
+        assert!(
+            model.title.contains(&model.hash),
+            "title '{}' should contain hash '{}'",
+            model.title,
+            model.hash
+        );
+    }
 
+    // --- /sdapi/v1/samplers ---
+    let resp = client
+        .get(format!("{base_url}/sdapi/v1/samplers"))
+        .send()
+        .await
+        .expect("samplers request failed");
+    assert_eq!(resp.status(), 200);
+    let samplers: Vec<serde_json::Value> = resp.json().await.expect("parse samplers");
+    assert!(samplers.len() >= 4, "expected at least 4 samplers");
+    let names: Vec<&str> = samplers.iter().filter_map(|s| s["name"].as_str()).collect();
+    assert!(names.contains(&"Euler"), "missing Euler sampler");
+    assert!(names.contains(&"Euler a"), "missing Euler a sampler");
+    assert!(names.contains(&"DPM++ 2M"), "missing DPM++ 2M sampler");
+    assert!(names.contains(&"DPM++ SDE"), "missing DPM++ SDE sampler");
+    // Verify structure has aliases and options
+    for sampler in &samplers {
+        assert!(
+            sampler["aliases"].is_array(),
+            "sampler should have aliases array"
+        );
+        assert!(
+            sampler["options"].is_object(),
+            "sampler should have options object"
+        );
+    }
+
+    // --- /sdapi/v1/schedulers ---
+    let resp = client
+        .get(format!("{base_url}/sdapi/v1/schedulers"))
+        .send()
+        .await
+        .expect("schedulers request failed");
+    assert_eq!(resp.status(), 200);
+    let schedulers: Vec<serde_json::Value> = resp.json().await.expect("parse schedulers");
+    assert!(schedulers.len() >= 2, "expected at least 2 schedulers");
+    let sched_names: Vec<&str> = schedulers
+        .iter()
+        .filter_map(|s| s["name"].as_str())
+        .collect();
+    assert!(sched_names.contains(&"normal"), "missing normal scheduler");
+    assert!(sched_names.contains(&"karras"), "missing karras scheduler");
+    for sched in &schedulers {
+        assert!(sched["label"].is_string(), "scheduler should have label");
+        assert!(
+            sched["aliases"].is_array(),
+            "scheduler should have aliases array"
+        );
+    }
+
+    // --- /sdapi/v1/progress (verify A1111 nested format) ---
     let resp = client
         .get(format!("{base_url}/sdapi/v1/progress"))
         .send()
         .await
         .expect("progress request failed");
     assert_eq!(resp.status(), 200);
+    let progress: serde_json::Value = resp.json().await.expect("parse progress");
+    assert!(
+        progress["progress"].is_f64(),
+        "progress should have progress float"
+    );
+    assert!(
+        progress["eta_relative"].is_f64(),
+        "progress should have eta_relative float"
+    );
+    assert!(
+        progress["state"].is_object(),
+        "progress should have nested state object"
+    );
+    let state = &progress["state"];
+    assert!(
+        state["sampling_step"].is_u64(),
+        "state should have sampling_step"
+    );
+    assert!(
+        state["sampling_steps"].is_u64(),
+        "state should have sampling_steps"
+    );
+    assert!(
+        state["skipped"].is_boolean(),
+        "state should have skipped bool"
+    );
+    assert!(
+        state["interrupted"].is_boolean(),
+        "state should have interrupted bool"
+    );
+
+    // --- /sdapi/v1/options (verify sd_vae field and partial update) ---
+    let resp = client
+        .get(format!("{base_url}/sdapi/v1/options"))
+        .send()
+        .await
+        .expect("get options failed");
+    assert_eq!(resp.status(), 200);
+    let opts: serde_json::Value = resp.json().await.expect("parse options");
+    assert_eq!(
+        opts["sd_vae"].as_str(),
+        Some("Automatic"),
+        "default sd_vae should be Automatic"
+    );
+
+    // Partial update: set only sd_vae, checkpoint should be unchanged
+    let prev_ckpt = opts["sd_model_checkpoint"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+    let resp = client
+        .post(format!("{base_url}/sdapi/v1/options"))
+        .json(&serde_json::json!({ "sd_vae": "test_vae.safetensors" }))
+        .send()
+        .await
+        .expect("set options failed");
+    assert_eq!(resp.status(), 200);
+    let opts: serde_json::Value = resp.json().await.expect("parse set options response");
+    assert_eq!(
+        opts["sd_vae"].as_str(),
+        Some("test_vae.safetensors"),
+        "sd_vae should be updated"
+    );
+    assert_eq!(
+        opts["sd_model_checkpoint"].as_str().unwrap_or(""),
+        prev_ckpt,
+        "sd_model_checkpoint should be unchanged after partial update"
+    );
 
     // Pick resolution based on model: SDXL is tuned for 1024x1024, SD 1.5 for 512x512
     let is_sdxl = ckpt.contains("xl");

@@ -7,11 +7,28 @@
 //! # Endpoints
 //!
 //! **A1111 API** (`/sdapi/v1/…`):
+//! - `GET  /internal/ping` — connection probe
 //! - `POST /sdapi/v1/txt2img` — text-to-image generation
+//! - `POST /sdapi/v1/img2img` — image-to-image generation
 //! - `GET  /sdapi/v1/sd-models` — list available checkpoints
+//! - `GET  /sdapi/v1/samplers` — list sampling algorithms
+//! - `GET  /sdapi/v1/schedulers` — list sigma schedules
 //! - `GET  /sdapi/v1/options` — get server options
-//! - `POST /sdapi/v1/options` — set server options
+//! - `POST /sdapi/v1/options` — set server options (partial update)
 //! - `GET  /sdapi/v1/progress` — current generation progress
+//! - `POST /sdapi/v1/interrupt` — cancel the active generation
+//! - `GET  /sdapi/v1/upscalers` — list available upscalers
+//! - `POST /sdapi/v1/extra-batch-images` — upscale images (not implemented)
+//! - `GET  /sdapi/v1/sd-vae` — list available VAE models
+//! - `POST /sdapi/v1/unload-checkpoint` — unload all models from VRAM
+//! - `GET  /internal/sysinfo` — platform and version info
+//!
+//! **ControlNet extension** (`/controlnet/…`):
+//! - `GET  /controlnet/model_list` — list available ControlNet models
+//! - `GET  /controlnet/module_list` — list preprocessor modules
+//! - `GET  /controlnet/control_types` — control type categories
+//! - `GET  /controlnet/settings` — extension settings
+//! - `POST /controlnet/detect` — run preprocessor (not implemented)
 //!
 //! **ComfyUI API** (`/…`):
 //! - `POST /prompt` — submit a workflow for execution
@@ -19,12 +36,10 @@
 //! - `GET  /queue` — queue status
 //! - `GET  /history/{id}` — prompt execution history
 
-mod a1111;
+pub mod a1111;
 mod comfyui;
 mod error;
 mod state;
-
-pub use a1111::types::{OverrideSettings, SdModel, Txt2ImgRequest, Txt2ImgResponse};
 use axum::Router;
 pub use state::{AppState, ProgressInfo, ServerOptions};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};

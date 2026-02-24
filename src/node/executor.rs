@@ -90,9 +90,8 @@ impl ExecutionGraph {
         });
     }
 
-    /// Set a constant value for an input slot (widget values).
-    #[cfg(test)]
-    fn set_constant(&mut self, node_id: NodeId, slot: usize, value: NodeValue) {
+    /// Set a constant value for an input slot (widget values, injected images).
+    pub(crate) fn set_constant(&mut self, node_id: NodeId, slot: usize, value: NodeValue) {
         self.constants.insert((node_id, slot), value);
     }
 

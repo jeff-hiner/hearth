@@ -65,6 +65,9 @@ uuid = { version = "1", features = ["v4"] }
 # Base64 encoding for API image responses
 base64 = "0.22"
 
+# SHA-256 hashing for model file checksums
+sha2 = "0.10"
+
 [dev-dependencies]
 # CLI parsing for examples
 clap = { version = "4", features = ["derive"] }

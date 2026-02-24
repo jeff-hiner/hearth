@@ -85,7 +85,9 @@ impl EulerASampler {
 
         for i in 0..sigmas.len() - 1 {
             if let Some(cb) = progress {
-                cb(i + 1, sigmas.len() - 1);
+                if !cb(i + 1, sigmas.len() - 1) {
+                    break;
+                }
             }
             let sigma = sigmas[i];
             let sigma_next = sigmas[i + 1];
@@ -146,7 +148,9 @@ impl EulerASampler {
 
         for i in 0..num_steps {
             if let Some(cb) = progress {
-                cb(i + 1, num_steps);
+                if !cb(i + 1, num_steps) {
+                    break;
+                }
             }
             let sigma = sigmas[i];
             let sigma_next = sigmas[i + 1];

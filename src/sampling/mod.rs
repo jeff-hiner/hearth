@@ -44,5 +44,7 @@ pub use sampler_kind::SamplerKind;
 pub use scheduler::{DiffusionSchedule, NoiseSchedule};
 pub use scheduler_kind::SchedulerKind;
 
-/// Optional progress callback: `(current_step, total_steps)`.
-pub type ProgressCallback<'a> = Option<&'a dyn Fn(usize, usize)>;
+/// Optional progress callback: `(current_step, total_steps) -> should_continue`.
+///
+/// Return `true` to continue sampling, `false` to cancel early.
+pub type ProgressCallback<'a> = Option<&'a dyn Fn(usize, usize) -> bool>;

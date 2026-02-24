@@ -1,7 +1,13 @@
 //! Shared application state for the server.
 
 use crate::node::context::ExecutionContext;
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    path::PathBuf,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 use tokio::sync::{Mutex, watch};
 
 /// Shared application state, wrapped in `Arc` at the router level.
@@ -18,6 +24,8 @@ pub struct AppState {
     pub progress_tx: watch::Sender<ProgressInfo>,
     /// Progress receiver — read by progress endpoint.
     pub progress_rx: watch::Receiver<ProgressInfo>,
+    /// Cancellation flag — set by `/sdapi/v1/interrupt`, checked each sampling step.
+    pub cancel: Arc<AtomicBool>,
 }
 
 impl AppState {
@@ -34,15 +42,42 @@ impl AppState {
             options: Mutex::new(ServerOptions::default()),
             progress_tx,
             progress_rx,
+            cancel: Arc::new(AtomicBool::new(false)),
         })
+    }
+
+    /// Returns `true` if cancellation was requested.
+    pub fn is_cancelled(&self) -> bool {
+        self.cancel.load(Ordering::Relaxed)
+    }
+
+    /// Reset the cancellation flag (call before starting a new job).
+    pub fn reset_cancel(&self) {
+        self.cancel.store(false, Ordering::Relaxed);
     }
 }
 
 /// Server options (mirrors A1111's `/sdapi/v1/options`).
-#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ServerOptions {
     /// Currently loaded checkpoint filename.
     pub sd_model_checkpoint: String,
+    /// VAE selection ("Automatic" or a specific filename).
+    #[serde(default = "default_vae")]
+    pub sd_vae: String,
+}
+
+impl Default for ServerOptions {
+    fn default() -> Self {
+        Self {
+            sd_model_checkpoint: String::new(),
+            sd_vae: default_vae(),
+        }
+    }
+}
+
+fn default_vae() -> String {
+    "Automatic".to_string()
 }
 
 /// Progress information for the current generation.

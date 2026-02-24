@@ -17,6 +17,7 @@ use crate::{
     types::{Backend, ConditioningValue, ControlNetRef, Latent},
 };
 use burn::tensor::{Distribution, Tensor};
+use std::sync::atomic::Ordering;
 
 /// Runs denoising diffusion sampling on a latent tensor.
 ///
@@ -178,11 +179,13 @@ impl Node for KSampler {
         // Build progress callback from the context's progress function.
         // Extract reference before borrowing ctx.models so the borrow checker
         // can see these are disjoint field borrows.
+        let cancel = ctx.cancel.clone();
         let progress_fn = ctx.progress.as_deref();
-        let progress_cb = |current: usize, total: usize| {
+        let progress_cb = |current: usize, total: usize| -> bool {
             if let Some(f) = progress_fn {
                 f(current, total);
             }
+            !cancel.load(Ordering::Relaxed)
         };
 
         // Borrow UNet and dispatch by variant.

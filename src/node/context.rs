@@ -5,7 +5,13 @@
 
 use crate::{model_manager::ModelManager, types::Backend};
 use burn::tensor::Device;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 /// Progress callback signature: `(current_step, total_steps)`.
 pub(crate) type ProgressFn = Box<dyn Fn(usize, usize) + Send + Sync>;
@@ -21,6 +27,8 @@ pub struct ExecutionContext {
     output_dir: PathBuf,
     /// Optional progress callback for long-running operations.
     pub(crate) progress: Option<ProgressFn>,
+    /// Cancellation flag — checked each sampling step for early exit.
+    pub(crate) cancel: Arc<AtomicBool>,
 }
 
 impl std::fmt::Debug for ExecutionContext {
@@ -39,12 +47,23 @@ impl ExecutionContext {
             models: ModelManager::new(models_dir, device),
             output_dir,
             progress: None,
+            cancel: Arc::new(AtomicBool::new(false)),
         }
     }
 
     /// Set the progress callback.
     pub fn set_progress(&mut self, f: ProgressFn) {
         self.progress = Some(f);
+    }
+
+    /// Set the cancellation flag (shared with the server's interrupt handler).
+    pub fn set_cancel(&mut self, flag: Arc<AtomicBool>) {
+        self.cancel = flag;
+    }
+
+    /// Returns `true` if cancellation has been requested.
+    pub fn is_cancelled(&self) -> bool {
+        self.cancel.load(Ordering::Relaxed)
     }
 
     /// Report progress (no-op if no callback is set).

@@ -353,6 +353,14 @@ impl ModelManager {
         Ok(())
     }
 
+    /// Unload all models, freeing all tracked VRAM.
+    pub fn unload_all(&mut self) {
+        let count = self.models.len();
+        self.models.clear();
+        self.tracked_usage = 0;
+        tracing::info!(count, "unloaded all models");
+    }
+
     // -----------------------------------------------------------------
     // Internal
     // -----------------------------------------------------------------

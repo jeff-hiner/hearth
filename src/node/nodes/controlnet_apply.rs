@@ -19,12 +19,20 @@ use crate::{
 pub(crate) struct ControlNetApply {
     /// Strength multiplier (0.0 = no effect, 1.0 = full effect).
     strength: f32,
+    /// Step fraction at which ControlNet activates (0.0 = first step).
+    start_percent: f32,
+    /// Step fraction at which ControlNet deactivates (1.0 = last step).
+    end_percent: f32,
 }
 
 impl ControlNetApply {
-    /// Create a new ControlNetApply node.
-    pub(crate) fn new(strength: f32) -> Self {
-        Self { strength }
+    /// Create a new ControlNetApply node with guidance range.
+    pub(crate) fn new(strength: f32, start_percent: f32, end_percent: f32) -> Self {
+        Self {
+            strength,
+            start_percent,
+            end_percent,
+        }
     }
 }
 
@@ -94,8 +102,8 @@ impl Node for ControlNetApply {
             handle: cn_handle,
             hint,
             strength: self.strength,
-            start_percent: 0.0,
-            end_percent: 1.0,
+            start_percent: self.start_percent,
+            end_percent: self.end_percent,
         };
 
         for entry in &mut cond.entries {
