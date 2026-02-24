@@ -13,13 +13,13 @@ pub(super) async fn sd_vae(State(state): State<Arc<AppState>>) -> Json<Vec<VaeIt
     if let Ok(entries) = std::fs::read_dir(&vae_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().is_some_and(|ext| ext == "safetensors") {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    items.push(VaeItem {
-                        model_name: name.to_string(),
-                        filename: path.to_string_lossy().into_owned(),
-                    });
-                }
+            if path.extension().is_some_and(|ext| ext == "safetensors")
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+            {
+                items.push(VaeItem {
+                    model_name: name.to_string(),
+                    filename: path.to_string_lossy().into_owned(),
+                });
             }
         }
     }

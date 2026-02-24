@@ -28,7 +28,7 @@ impl<const HIDDEN: usize, const FF: usize, const QUICK_GELU: bool> ClipMlp<HIDDE
     /// - `{prefix}.fc1.{weight,bias}`
     /// - `{prefix}.fc2.{weight,bias}`
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {

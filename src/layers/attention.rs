@@ -6,6 +6,7 @@ use burn::{
     nn::{GroupNorm, conv::Conv2d},
     prelude::*,
 };
+use safetensors::SafeTensors;
 
 /// Self-attention block for VAE.
 ///
@@ -26,7 +27,7 @@ pub(crate) struct AttentionBlock {
 impl AttentionBlock {
     /// Load an AttentionBlock from safetensors weights.
     pub(crate) fn load<const GROUPS: usize, const CHANNELS: usize>(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         num_heads: usize,
         device: &Device<Backend>,

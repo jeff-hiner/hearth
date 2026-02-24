@@ -16,10 +16,10 @@ pub(super) async fn model_list(State(state): State<Arc<AppState>>) -> Json<Contr
     if let Ok(entries) = std::fs::read_dir(&cn_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().is_some_and(|ext| ext == "safetensors") {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    models.push(name.to_string());
-                }
+            if path.extension().is_some_and(|ext| ext == "safetensors")
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+            {
+                models.push(name.to_string());
             }
         }
     }

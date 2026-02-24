@@ -29,7 +29,7 @@ impl Downsample2D {
     ///
     /// SD checkpoint key: `{prefix}.op`
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         channels: usize,
         device: &Device<Backend>,

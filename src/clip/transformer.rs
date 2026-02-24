@@ -32,7 +32,7 @@ impl<
     ///
     /// Expects tensors at `{prefix}.layers.{0..LAYERS-1}.*`
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {

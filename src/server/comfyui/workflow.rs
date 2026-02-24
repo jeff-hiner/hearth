@@ -56,7 +56,7 @@ pub(super) fn parse_workflow(
                 i.denoise as f32,
             )),
             ComfyNode::KSamplerAdvanced(i) => Box::new(KSamplerAdvanced::new(
-                i.add_noise == "enable",
+                i.add_noise,
                 i.start_at_step as usize,
                 i.end_at_step as usize,
                 i.seed,

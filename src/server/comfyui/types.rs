@@ -171,8 +171,8 @@ pub(super) struct KSamplerAdvancedInputs {
     /// Latent image to denoise (slot 3).
     pub latent_image: Link,
     /// Whether to inject initial noise (`"enable"` or `"disable"`).
-    #[serde(default = "default_enable")]
-    pub add_noise: String,
+    #[serde(default = "default_enable", deserialize_with = "deserialize_enable_disable")]
+    pub add_noise: bool,
     /// Random seed.
     #[serde(default)]
     pub seed: u64,
@@ -282,8 +282,18 @@ fn default_euler() -> SamplerKind {
 fn default_normal() -> SchedulerKind {
     SchedulerKind::Normal
 }
-fn default_enable() -> String {
-    "enable".to_string()
+fn default_enable() -> bool {
+    true
+}
+fn deserialize_enable_disable<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match <&str>::deserialize(deserializer)? {
+        "enable" => Ok(true),
+        "disable" => Ok(false),
+        other => Err(serde::de::Error::unknown_variant(other, &["enable", "disable"])),
+    }
 }
 fn default_comfyui() -> String {
     "ComfyUI".to_string()
@@ -541,7 +551,7 @@ mod tests {
         assert_eq!(ksa.positive.0, "11");
         assert_eq!(ksa.negative.0, "12");
         assert_eq!(ksa.latent_image.0, "13");
-        assert_eq!(ksa.add_noise, "enable");
+        assert!(ksa.add_noise);
         assert_eq!(ksa.seed, 123);
         assert_eq!(ksa.steps, 25);
         assert!((ksa.cfg - 8.0).abs() < f64::EPSILON);
@@ -568,7 +578,7 @@ mod tests {
         let ComfyNode::KSamplerAdvanced(ref ksa) = req.prompt["1"] else {
             panic!("node 1 should be KSamplerAdvanced");
         };
-        assert_eq!(ksa.add_noise, "enable");
+        assert!(ksa.add_noise);
         assert_eq!(ksa.steps, 20);
         assert!((ksa.cfg - 7.0).abs() < f64::EPSILON);
         assert_eq!(ksa.start_at_step, 0);

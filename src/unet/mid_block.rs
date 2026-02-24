@@ -28,7 +28,7 @@ impl UNetMidBlock {
         reason = "loading config needs all parameters"
     )]
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         channels: usize,
         time_embed_dim: usize,

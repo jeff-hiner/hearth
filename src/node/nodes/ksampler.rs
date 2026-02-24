@@ -16,7 +16,10 @@ use crate::{
     },
     types::{Backend, ConditioningValue, ControlNetRef, Latent},
 };
-use burn::tensor::{Distribution, Tensor};
+use burn::{
+    prelude::Backend as _,
+    tensor::{Distribution, Tensor},
+};
 use std::sync::atomic::Ordering;
 
 /// Runs denoising diffusion sampling on a latent tensor.
@@ -133,7 +136,7 @@ impl Node for KSampler {
 
         // Set seed
         let device = ctx.device().clone();
-        <Backend as burn::tensor::backend::Backend>::seed(&device, self.seed);
+        Backend::seed(&device, self.seed);
 
         // Build noise schedule
         // SDXL and SD 1.5 both use these DDPM parameters

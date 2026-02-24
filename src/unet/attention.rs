@@ -2,10 +2,14 @@
 
 use crate::{
     lora::{apply_lora_linear, lora_key_base},
-    model_loader::LoadError,
+    model_loader::{LoadError, load_tensor_1d, load_tensor_2d},
     types::Backend,
 };
-use burn::{module::Param, nn::Linear, prelude::*};
+use burn::{
+    module::Param,
+    nn::{Linear, LinearConfig},
+    prelude::*,
+};
 use safetensors::SafeTensors;
 
 /// Cross-attention layer.
@@ -37,7 +41,7 @@ impl CrossAttention {
     /// - `{prefix}.to_v.weight`
     /// - `{prefix}.to_out.0.weight`, `{prefix}.to_out.0.bias`
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         query_dim: usize,
         context_dim: usize,
@@ -186,7 +190,7 @@ impl FeedForward {
     /// SD uses GEGLU activation, so the first projection is 2x wider.
     /// Keys: `{prefix}.net.0.proj`, `{prefix}.net.2`
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         dim: usize,
         mult: usize,
@@ -250,18 +254,16 @@ impl FeedForward {
 
 /// Load linear layer without bias.
 fn load_linear_no_bias(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_features: usize,
     out_features: usize,
     device: &Device<Backend>,
 ) -> Result<Linear<Backend>, LoadError> {
-    use crate::model_loader::load_tensor_2d;
-
     let weight = load_tensor_2d(tensors, &format!("{prefix}.weight"), device)?;
     let weight = weight.transpose();
 
-    let config = burn::nn::LinearConfig::new(in_features, out_features).with_bias(false);
+    let config = LinearConfig::new(in_features, out_features).with_bias(false);
     let mut linear = config.init(device);
     linear.weight = Param::from_tensor(weight);
 
@@ -270,19 +272,17 @@ fn load_linear_no_bias(
 
 /// Load linear layer with bias.
 fn load_linear_with_bias(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_features: usize,
     out_features: usize,
     device: &Device<Backend>,
 ) -> Result<Linear<Backend>, LoadError> {
-    use crate::model_loader::{load_tensor_1d, load_tensor_2d};
-
     let weight = load_tensor_2d(tensors, &format!("{prefix}.weight"), device)?;
     let bias = load_tensor_1d(tensors, &format!("{prefix}.bias"), device)?;
     let weight = weight.transpose();
 
-    let config = burn::nn::LinearConfig::new(in_features, out_features);
+    let config = LinearConfig::new(in_features, out_features);
     let mut linear = config.init(device);
     linear.weight = Param::from_tensor(weight);
     linear.bias = Some(Param::from_tensor(bias));

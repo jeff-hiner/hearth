@@ -41,7 +41,7 @@ pub use conditioning::{Sd15Conditioning, SdxlConditioning};
 pub use config::{ClipConfig, Sd15Clip};
 pub use encoder::ClipTextEncoder;
 pub use open_clip::OpenClipTextEncoder;
-pub use tokenizer::ClipTokenizer;
+pub use tokenizer::{ClipTokenizer, TokenizerError};
 
 /// SD 1.5 CLIP text encoder type alias.
 ///

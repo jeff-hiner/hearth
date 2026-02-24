@@ -92,10 +92,10 @@ impl EulerSampler {
             .collect();
 
         for i in 0..sigmas.len() - 1 {
-            if let Some(cb) = progress {
-                if !cb(i + 1, sigmas.len() - 1) {
-                    break;
-                }
+            if let Some(cb) = progress
+                && !cb(i + 1, sigmas.len() - 1)
+            {
+                break;
             }
             let sigma = sigmas[i];
             let sigma_next = sigmas[i + 1];
@@ -157,10 +157,10 @@ impl EulerSampler {
         let num_steps = sigmas.len() - 1;
 
         for i in 0..num_steps {
-            if let Some(cb) = progress {
-                if !cb(i + 1, num_steps) {
-                    break;
-                }
+            if let Some(cb) = progress
+                && !cb(i + 1, num_steps)
+            {
+                break;
             }
             let sigma = sigmas[i];
             let sigma_next = sigmas[i + 1];
@@ -369,6 +369,14 @@ impl EulerSampler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        clip::{Sd15ClipTextEncoder, Sd15Conditioning},
+        model_loader::SafeTensorsFile,
+        unet::Sd15Unet2D,
+        vae::Sd15VaeDecoder,
+    };
+    use burn::tensor::Distribution;
+    use std::path::Path;
 
     #[test]
     fn sigma_to_timestep_conversion() {
@@ -421,14 +429,6 @@ mod tests {
     #[test]
     #[ignore = "slow test, run with --ignored"]
     fn full_sampling_pipeline() {
-        use crate::{
-            clip::{Sd15ClipTextEncoder, Sd15Conditioning},
-            model_loader::SafeTensorsFile,
-            unet::Sd15Unet2D,
-            vae::Sd15VaeDecoder,
-        };
-        use std::path::Path;
-
         const MODEL_PATH: &str = "models/checkpoints/v1-5-pruned-emaonly-fp16.safetensors";
 
         let path = Path::new(MODEL_PATH);
@@ -458,7 +458,6 @@ mod tests {
         println!("Sigmas for 4 steps: {:?}", schedule.sigmas);
 
         // Create test inputs (random noise)
-        use burn::tensor::Distribution;
         let latent: Tensor<Backend, 4> =
             Tensor::random([1, 4, 64, 64], Distribution::Normal(0.0, 1.0), &device);
         let positive = Sd15Conditioning::new(Tensor::zeros([1, 77, 768], &device));

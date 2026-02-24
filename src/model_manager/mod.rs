@@ -23,6 +23,7 @@ use crate::{
 };
 use burn::tensor::Device;
 pub(crate) use error::ModelError;
+use safetensors::SafeTensors;
 use std::{cell::Cell, collections::HashMap, path::PathBuf, time::Instant};
 
 /// A loaded model entry in the manager.
@@ -378,7 +379,7 @@ impl ModelManager {
 /// `dtype_byte_size × num_elements` for matching tensors. If loading
 /// into an f16 backend from f32 weights, the result is halved.
 pub(crate) fn compute_weight_bytes(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     target_is_f16: bool,
 ) -> u64 {

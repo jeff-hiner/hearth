@@ -51,10 +51,7 @@ impl<
     ///
     /// # Returns
     /// Loaded encoder or error
-    pub fn load(
-        tensors: &safetensors::SafeTensors<'_>,
-        device: &Device<Backend>,
-    ) -> Result<Self, LoadError> {
+    pub fn load(tensors: &SafeTensors<'_>, device: &Device<Backend>) -> Result<Self, LoadError> {
         Self::load_with_prefix(tensors, "cond_stage_model.transformer.text_model", device)
     }
 
@@ -68,7 +65,7 @@ impl<
     /// # Returns
     /// Loaded encoder or error
     pub fn load_with_prefix(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {

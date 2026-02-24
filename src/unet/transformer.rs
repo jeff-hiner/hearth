@@ -33,7 +33,7 @@ pub(crate) struct BasicTransformerBlock {
 impl BasicTransformerBlock {
     /// Load from safetensors weights.
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         dim: usize,
         context_dim: usize,
@@ -173,7 +173,7 @@ impl SpatialTransformer {
         reason = "loading config needs all parameters"
     )]
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         in_channels: usize,
         num_heads: usize,
@@ -364,7 +364,7 @@ impl SpatialTransformer {
 
 /// Load a spatial projection, auto-detecting Conv vs Linear from tensor shape.
 fn load_spatial_projection(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_dim: usize,
     out_dim: usize,
@@ -388,7 +388,7 @@ fn load_spatial_projection(
 
 /// Load LayerNorm.
 fn load_layer_norm(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     dim: usize,
     device: &Device<Backend>,
@@ -406,7 +406,7 @@ fn load_layer_norm(
 
 /// Load GroupNorm.
 fn load_group_norm(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     groups: usize,
     channels: usize,
@@ -425,7 +425,7 @@ fn load_group_norm(
 
 /// Load 1x1 Conv2d.
 fn load_conv1x1(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_channels: usize,
     out_channels: usize,
@@ -444,7 +444,7 @@ fn load_conv1x1(
 
 /// Load linear layer with bias (for spatial projection).
 fn load_linear_with_bias(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_features: usize,
     out_features: usize,

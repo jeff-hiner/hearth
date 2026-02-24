@@ -10,6 +10,7 @@ use burn::{
     nn::{PaddingConfig2d, conv::Conv2dConfig},
     prelude::*,
     tensor::{
+        Device, TensorData,
         module::interpolate,
         ops::{InterpolateMode, InterpolateOptions},
     },
@@ -19,7 +20,7 @@ use hearth::types::Backend;
 /// Check that bilinear upsample preserves nonzero values for multi-channel tensors.
 #[test]
 fn bilinear_ones_1ch_296_to_518() {
-    let device: burn::tensor::Device<Backend> = Default::default();
+    let device: Device<Backend> = Default::default();
     let input: Tensor<Backend, 4> = Tensor::ones([1, 1, 296, 296], &device);
     let output = interpolate(
         input,
@@ -40,7 +41,7 @@ fn bilinear_ones_1ch_296_to_518() {
 
 #[test]
 fn bilinear_ones_32ch_296_to_518() {
-    let device: burn::tensor::Device<Backend> = Default::default();
+    let device: Device<Backend> = Default::default();
     let input: Tensor<Backend, 4> = Tensor::ones([1, 32, 296, 296], &device);
     let output = interpolate(
         input,
@@ -84,7 +85,7 @@ fn bilinear_ones_32ch_296_to_518() {
 /// Channel c, row r, col c_ gets value (r * 296 + c_) as f32, normalized.
 #[test]
 fn bilinear_gradient_32ch_296_to_518() {
-    let device: burn::tensor::Device<Backend> = Default::default();
+    let device: Device<Backend> = Default::default();
 
     // Create a simple spatial gradient: value = row / 295
     // So row 0 = 0.0, row 295 = 1.0
@@ -101,7 +102,7 @@ fn bilinear_gradient_32ch_296_to_518() {
         }
     }
 
-    let td = burn::tensor::TensorData::new(data, [1, ch, h_in, w_in])
+    let td = TensorData::new(data, [1, ch, h_in, w_in])
         .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>();
     let input: Tensor<Backend, 4> = Tensor::from_data(td, &device);
 
@@ -153,7 +154,7 @@ fn bilinear_gradient_32ch_296_to_518() {
 /// This tests whether fusion or non-contiguous memory from conv output matters.
 #[test]
 fn bilinear_after_conv2d_32ch() {
-    let device: burn::tensor::Device<Backend> = Default::default();
+    let device: Device<Backend> = Default::default();
 
     // Create a 64→32 conv like output_conv1
     let config = Conv2dConfig::new([64, 32], [3, 3]).with_padding(PaddingConfig2d::Explicit(1, 1));
@@ -170,7 +171,7 @@ fn bilinear_after_conv2d_32ch() {
             data[r * w + c] = r as f32 / (h - 1) as f32;
         }
     }
-    let td = burn::tensor::TensorData::new(data, [1, ch, h, w])
+    let td = TensorData::new(data, [1, ch, h, w])
         .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>();
     let input: Tensor<Backend, 4> = Tensor::from_data(td, &device);
 
@@ -213,7 +214,7 @@ fn bilinear_after_conv2d_32ch() {
 /// mimicking what conv2d output looks like (data is NHWC, view is NCHW).
 #[test]
 fn bilinear_nhwc_contiguous_32ch_296_to_518() {
-    let device: burn::tensor::Device<Backend> = Default::default();
+    let device: Device<Backend> = Default::default();
 
     let h = 296_usize;
     let w = 296_usize;
@@ -231,7 +232,7 @@ fn bilinear_nhwc_contiguous_32ch_296_to_518() {
     }
 
     // Build as NHWC [1, 296, 296, 32]
-    let td = burn::tensor::TensorData::new(data, [1, h, w, ch])
+    let td = TensorData::new(data, [1, h, w, ch])
         .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>();
     let nhwc: Tensor<Backend, 4> = Tensor::from_data(td, &device);
 

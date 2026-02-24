@@ -10,6 +10,7 @@ use burn::{
     nn::conv::{Conv2d, Conv2dConfig},
     prelude::*,
 };
+use safetensors::SafeTensors;
 
 /// Number of ResNet layers per encoder down block (LAYERS_PER_BLOCK = 2).
 ///
@@ -40,7 +41,7 @@ impl<const GROUPS: usize> DownEncoderBlock2D<GROUPS> {
     /// - `{prefix}.block.{0,1}` for ResNet blocks
     /// - `{prefix}.downsample.conv` for the stride-2 convolution
     pub(super) fn load<const IN_CHANNELS: usize, const OUT_CHANNELS: usize>(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         add_downsample: bool,
         device: &Device<Backend>,

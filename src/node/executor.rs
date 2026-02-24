@@ -238,6 +238,7 @@ impl Executor {
 mod tests {
     use super::*;
     use crate::node::{SlotDef, ValueType};
+    use std::path::PathBuf;
 
     /// A trivial test node that outputs a constant float.
     #[derive(Debug)]
@@ -323,8 +324,8 @@ mod tests {
 
         let mut ctx = ExecutionContext::new(
             Default::default(),
-            std::path::PathBuf::from("models"),
-            std::path::PathBuf::from("output"),
+            PathBuf::from("models"),
+            PathBuf::from("output"),
         );
 
         let outputs = Executor::run(&graph, &mut ctx).unwrap();
@@ -346,8 +347,8 @@ mod tests {
 
         let mut ctx = ExecutionContext::new(
             Default::default(),
-            std::path::PathBuf::from("models"),
-            std::path::PathBuf::from("output"),
+            PathBuf::from("models"),
+            PathBuf::from("output"),
         );
 
         let result = Executor::run(&graph, &mut ctx);
@@ -364,8 +365,8 @@ mod tests {
 
         let mut ctx = ExecutionContext::new(
             Default::default(),
-            std::path::PathBuf::from("models"),
-            std::path::PathBuf::from("output"),
+            PathBuf::from("models"),
+            PathBuf::from("output"),
         );
 
         let outputs = Executor::run(&graph, &mut ctx).unwrap();

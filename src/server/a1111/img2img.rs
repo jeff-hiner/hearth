@@ -42,6 +42,23 @@ pub(super) async fn img2img(
         ));
     }
 
+    if req.inpainting_fill != 1 && req.mask.is_some() {
+        return Err(ApiError::BadRequest(format!(
+            "Inpainting fill mode {} is not yet supported by Hearth. \
+             Only mode 1 (original) is currently implemented. \
+             Modes 0 (fill), 2 (latent noise), and 3 (latent nothing) are not yet available.",
+            req.inpainting_fill
+        )));
+    }
+
+    if req.inpaint_full_res != 0 && req.mask.is_some() {
+        return Err(ApiError::BadRequest(
+            "Inpaint at full resolution (inpaint_full_res) is not yet supported by Hearth. \
+             Set inpaint_full_res to 0 to inpaint at the full image resolution."
+                .to_string(),
+        ));
+    }
+
     let init_b64 = req.init_images.first().ok_or_else(|| {
         ApiError::BadRequest("init_images must contain at least one image".to_string())
     })?;

@@ -12,7 +12,10 @@ use crate::{
     sampling::{DiffusionSchedule, NoiseSchedule, SamplerKind, SchedulerKind},
     types::{Backend, ConditioningValue, ControlNetRef, Latent},
 };
-use burn::tensor::{Distribution, Tensor};
+use burn::{
+    prelude::Backend as _,
+    tensor::{Distribution, Tensor},
+};
 use std::sync::atomic::Ordering;
 
 /// Runs denoising diffusion sampling with explicit step range control.
@@ -139,7 +142,7 @@ impl Node for KSamplerAdvanced {
 
         // Set seed
         let device = ctx.device().clone();
-        <Backend as burn::tensor::backend::Backend>::seed(&device, self.seed);
+        Backend::seed(&device, self.seed);
 
         // Build full noise schedule
         let noise_schedule = NoiseSchedule::linear(1000, 0.00085, 0.012);

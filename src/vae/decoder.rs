@@ -8,9 +8,10 @@ use crate::{
 };
 use burn::{
     nn::{GroupNorm, conv::Conv2d},
-    prelude::*,
+    prelude::{Backend as _, *},
     tensor::activation::silu,
 };
+use safetensors::SafeTensors;
 use std::marker::PhantomData;
 #[cfg(test)]
 use std::time::Instant;
@@ -57,7 +58,7 @@ impl<
     /// for a full SD checkpoint, or `None` for a standalone VAE file).
     /// This function loads both `post_quant_conv` and the decoder sub-components.
     pub fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: Option<&str>,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -257,8 +258,8 @@ impl<
 
             // Force the fusion backend to materialize output before cleanup,
             // otherwise memory_cleanup can reclaim buffers still in the lazy graph.
-            let _ = <Backend as burn::tensor::backend::Backend>::sync(&device);
-            <Backend as burn::tensor::backend::Backend>::memory_cleanup(&device);
+            let _ = Backend::sync(&device);
+            Backend::memory_cleanup(&device);
             info!(tile = i + 1, total_tiles, "Decoded tile");
         }
 

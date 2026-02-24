@@ -58,7 +58,7 @@ impl OpenClipTextEncoder {
     ///
     /// SDXL checkpoint prefix: `conditioner.embedders.1.model`
     pub fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -228,7 +228,7 @@ struct OpenClipResBlock {
 
 impl OpenClipResBlock {
     fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -300,7 +300,7 @@ struct OpenClipAttention {
 
 impl OpenClipAttention {
     fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -409,7 +409,7 @@ struct OpenClipMlp {
 
 impl OpenClipMlp {
     fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -462,7 +462,7 @@ fn create_causal_mask(seq_len: usize, device: &Device<Backend>) -> Tensor<Backen
 
 /// Load a LayerNorm for OpenCLIP.
 fn load_openclip_layer_norm(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     device: &Device<Backend>,
 ) -> Result<burn::nn::LayerNorm<Backend>, LoadError> {
@@ -479,7 +479,7 @@ fn load_openclip_layer_norm(
 
 /// Load a linear layer for OpenCLIP.
 fn load_openclip_linear(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_features: usize,
     out_features: usize,

@@ -5,13 +5,14 @@ use crate::{
     types::Backend,
 };
 use burn::{module::Param, nn::Linear, prelude::*};
+use safetensors::SafeTensors;
 
 /// Load a Linear layer from safetensors.
 ///
 /// PyTorch stores linear weights as `[out_features, in_features]`, but Burn expects
 /// `[in_features, out_features]`, so we transpose on load.
 pub(crate) fn load_linear<const IN: usize, const OUT: usize>(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     device: &Device<Backend>,
 ) -> Result<Linear<Backend>, LoadError> {

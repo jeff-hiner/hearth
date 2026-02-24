@@ -126,7 +126,7 @@ struct Upsample2D {
 
 impl Upsample2D {
     fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         channels: usize,
         device: &Device<Backend>,
@@ -206,16 +206,13 @@ impl<C: UnetConfig> Unet<C> {
     /// Load UNet from SD checkpoint.
     ///
     /// Uses prefix `model.diffusion_model`.
-    pub fn load(
-        tensors: &safetensors::SafeTensors<'_>,
-        device: &Device<Backend>,
-    ) -> Result<Self, LoadError> {
+    pub fn load(tensors: &SafeTensors<'_>, device: &Device<Backend>) -> Result<Self, LoadError> {
         Self::load_with_prefix(tensors, "model.diffusion_model", device)
     }
 
     /// Load UNet with custom prefix.
     pub fn load_with_prefix(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -304,7 +301,7 @@ impl<C: UnetConfig> Unet<C> {
 
     /// Load input (down) blocks from checkpoint.
     fn load_input_blocks(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         time_embed_dim: usize,
         device: &Device<Backend>,
@@ -390,7 +387,7 @@ impl<C: UnetConfig> Unet<C> {
 
     /// Load output (up) blocks from checkpoint.
     fn load_output_blocks(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         time_embed_dim: usize,
         device: &Device<Backend>,
@@ -1208,7 +1205,7 @@ impl UnetTimingStats {
 
 /// Load Conv2d with dynamic dimensions.
 fn load_conv2d(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     kernel_size: usize,
     in_channels: usize,
@@ -1231,7 +1228,7 @@ fn load_conv2d(
 
 /// Load GroupNorm with dynamic dimensions.
 fn load_group_norm(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     groups: usize,
     channels: usize,

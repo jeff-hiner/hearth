@@ -5,6 +5,7 @@ use crate::{
     types::Backend,
 };
 use burn::{module::Param, nn::Linear, prelude::*};
+use safetensors::SafeTensors;
 
 /// Sinusoidal timestep embeddings.
 ///
@@ -85,7 +86,7 @@ impl TimestepEmbedding {
     /// - `{prefix}.0.weight`, `{prefix}.0.bias` (linear_1)
     /// - `{prefix}.2.weight`, `{prefix}.2.bias` (linear_2)
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         in_channels: usize,
         out_channels: usize,
@@ -120,7 +121,7 @@ impl TimestepEmbedding {
 
 /// Load a linear layer with dynamic dimensions (not const generic).
 fn load_linear_dyn(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_features: usize,
     out_features: usize,

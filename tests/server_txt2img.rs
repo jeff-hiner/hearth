@@ -8,7 +8,10 @@
 #![cfg(feature = "gpu-vulkan-f16")]
 
 use base64::{Engine, engine::general_purpose::STANDARD};
-use hearth::server::{AppState, OverrideSettings, SdModel, Txt2ImgRequest, Txt2ImgResponse};
+use hearth::server::{
+    AppState,
+    a1111::{OverrideSettings, SdModel, Txt2ImgRequest, Txt2ImgResponse},
+};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tokio::{net::TcpListener, task::JoinHandle};
 
@@ -272,9 +275,12 @@ async fn txt2img_returns_base64_png() {
         seed: 42,
         denoising_strength: 1.0,
         batch_size: 1,
+        n_iter: 1,
+        tiling: false,
         override_settings: Some(OverrideSettings {
             sd_model_checkpoint: Some(ckpt),
         }),
+        alwayson_scripts: None,
     };
 
     tracing::info!("sending txt2img request (this will take a while)...");

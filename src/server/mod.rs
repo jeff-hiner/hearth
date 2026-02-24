@@ -40,9 +40,11 @@ pub mod a1111;
 mod comfyui;
 mod error;
 mod state;
+
 use axum::Router;
 pub use state::{AppState, ProgressInfo, ServerOptions};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use tokio::net::TcpListener;
 
 /// Build a router serving only the ComfyUI API.
 pub fn build_comfyui_router(state: Arc<AppState>) -> Router {
@@ -85,17 +87,17 @@ pub async fn run(
     a1111_addr: SocketAddr,
     models_dir: PathBuf,
     output_dir: PathBuf,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> std::io::Result<()> {
     let state = AppState::new(models_dir, output_dir);
 
     let comfyui_app = build_comfyui_router(Arc::clone(&state));
     let a1111_app = build_a1111_router(state);
 
     tracing::info!(%comfyui_addr, "starting ComfyUI API server");
-    let comfyui_listener = tokio::net::TcpListener::bind(comfyui_addr).await?;
+    let comfyui_listener = TcpListener::bind(comfyui_addr).await?;
 
     tracing::info!(%a1111_addr, "starting A1111 API server");
-    let a1111_listener = tokio::net::TcpListener::bind(a1111_addr).await?;
+    let a1111_listener = TcpListener::bind(a1111_addr).await?;
 
     tokio::select! {
         result = axum::serve(comfyui_listener, comfyui_app) => result?,

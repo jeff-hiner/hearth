@@ -1,8 +1,11 @@
 //! `CheckpointLoaderSimple` node — loads a Stable Diffusion checkpoint.
 
 use crate::{
-    clip::{ClipTokenizer, OpenClipTextEncoder, SdxlClipLTextEncoder},
-    model_loader::{self, SafeTensorsFile},
+    clip::{ClipTokenizer, OpenClipTextEncoder, Sd15ClipTextEncoder, SdxlClipLTextEncoder},
+    model_loader::{
+        SafeTensorsFile,
+        prefix::{CLIP, SDXL_CLIP_G, SDXL_CLIP_L, UNET, VAE},
+    },
     model_manager::compute_weight_bytes,
     node::{
         Node, ResolvedInput, SlotDef, ValueType,
@@ -11,10 +14,13 @@ use crate::{
         value::NodeValue,
         variant::{ClipVariant, UnetVariant, VaeVariant},
     },
+    types::Backend,
     unet::{Sd15Unet2D, SdxlUnet2D},
     vae::{Sd15VaeDecoder, Sd15VaeEncoder, SdxlVaeDecoder, SdxlVaeEncoder},
 };
-use std::path::PathBuf;
+use burn::tensor::Device;
+use safetensors::SafeTensors;
+use std::path::{Path, PathBuf};
 
 /// Loads a SD checkpoint and returns model/clip/vae handles.
 ///
@@ -68,10 +74,7 @@ impl Node for CheckpointLoaderSimple {
         let device = ctx.device().clone();
 
         // Detect model type from tensor names
-        let is_sdxl = tensors
-            .names()
-            .iter()
-            .any(|n| n.starts_with(model_loader::prefix::SDXL_CLIP_L));
+        let is_sdxl = tensors.names().iter().any(|n| n.starts_with(SDXL_CLIP_L));
 
         if is_sdxl {
             self.load_sdxl(&tensors, &device, ctx, &ckpt_path)
@@ -84,17 +87,17 @@ impl Node for CheckpointLoaderSimple {
 impl CheckpointLoaderSimple {
     fn load_sdxl(
         &self,
-        tensors: &safetensors::SafeTensors<'_>,
-        device: &burn::tensor::Device<crate::types::Backend>,
+        tensors: &SafeTensors<'_>,
+        device: &Device<Backend>,
         ctx: &mut ExecutionContext,
-        ckpt_path: &std::path::Path,
+        ckpt_path: &Path,
     ) -> Result<Vec<NodeValue>, NodeError> {
         tracing::info!("detected SDXL checkpoint");
 
         // Compute weight sizes from safetensors header (no data loaded)
-        let unet_bytes = compute_weight_bytes(tensors, model_loader::prefix::UNET, true);
-        let clip_l_bytes = compute_weight_bytes(tensors, model_loader::prefix::SDXL_CLIP_L, true);
-        let clip_g_bytes = compute_weight_bytes(tensors, model_loader::prefix::SDXL_CLIP_G, true);
+        let unet_bytes = compute_weight_bytes(tensors, UNET, true);
+        let clip_l_bytes = compute_weight_bytes(tensors, SDXL_CLIP_L, true);
+        let clip_g_bytes = compute_weight_bytes(tensors, SDXL_CLIP_G, true);
 
         // Load UNet
         let unet = SdxlUnet2D::load(tensors, device)?;
@@ -103,12 +106,8 @@ impl CheckpointLoaderSimple {
                 .register_unet(UnetVariant::Sdxl(unet), unet_bytes, ckpt_path.to_path_buf());
 
         // Load CLIP-L + OpenCLIP-G
-        let clip_l = SdxlClipLTextEncoder::load_with_prefix(
-            tensors,
-            model_loader::prefix::SDXL_CLIP_L,
-            device,
-        )?;
-        let clip_g = OpenClipTextEncoder::load(tensors, model_loader::prefix::SDXL_CLIP_G, device)?;
+        let clip_l = SdxlClipLTextEncoder::load_with_prefix(tensors, SDXL_CLIP_L, device)?;
+        let clip_g = OpenClipTextEncoder::load(tensors, SDXL_CLIP_G, device)?;
 
         // Load tokenizer from standard path
         let vocab = ctx.models_dir().join("clip/vocab.json");
@@ -141,7 +140,7 @@ impl CheckpointLoaderSimple {
             (encoder, decoder, bytes, vae_path)
         } else {
             tracing::info!("loading VAE from checkpoint");
-            let bytes = compute_weight_bytes(tensors, model_loader::prefix::VAE, true);
+            let bytes = compute_weight_bytes(tensors, VAE, true);
             let encoder = SdxlVaeEncoder::load(tensors, Some("first_stage_model"), device)?;
             let decoder = SdxlVaeDecoder::load(tensors, Some("first_stage_model"), device)?;
             (encoder, decoder, bytes, ckpt_path.to_path_buf())
@@ -160,23 +159,23 @@ impl CheckpointLoaderSimple {
 
     fn load_sd15(
         &self,
-        tensors: &safetensors::SafeTensors<'_>,
-        device: &burn::tensor::Device<crate::types::Backend>,
+        tensors: &SafeTensors<'_>,
+        device: &Device<Backend>,
         ctx: &mut ExecutionContext,
-        ckpt_path: &std::path::Path,
+        ckpt_path: &Path,
     ) -> Result<Vec<NodeValue>, NodeError> {
         tracing::info!("detected SD 1.5 checkpoint");
 
-        let unet_bytes = compute_weight_bytes(tensors, model_loader::prefix::UNET, true);
-        let clip_bytes = compute_weight_bytes(tensors, model_loader::prefix::CLIP, true);
-        let vae_bytes = compute_weight_bytes(tensors, model_loader::prefix::VAE, true);
+        let unet_bytes = compute_weight_bytes(tensors, UNET, true);
+        let clip_bytes = compute_weight_bytes(tensors, CLIP, true);
+        let vae_bytes = compute_weight_bytes(tensors, VAE, true);
 
         let unet = Sd15Unet2D::load(tensors, device)?;
         let unet_handle =
             ctx.models
                 .register_unet(UnetVariant::Sd15(unet), unet_bytes, ckpt_path.to_path_buf());
 
-        let clip = crate::clip::Sd15ClipTextEncoder::load(tensors, device)?;
+        let clip = Sd15ClipTextEncoder::load(tensors, device)?;
         let vocab = ctx.models_dir().join("clip/vocab.json");
         let merges = ctx.models_dir().join("clip/merges.txt");
         let tokenizer =

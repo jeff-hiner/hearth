@@ -6,6 +6,7 @@ use crate::{
     types::Backend,
 };
 use burn::prelude::*;
+use safetensors::SafeTensors;
 
 /// Mid block containing ResNet + Attention + ResNet.
 #[derive(Debug)]
@@ -18,7 +19,7 @@ pub(super) struct UNetMidBlock2D<const GROUPS: usize, const CHANNELS: usize> {
 impl<const GROUPS: usize, const CHANNELS: usize> UNetMidBlock2D<GROUPS, CHANNELS> {
     /// Load a UNetMidBlock2D from safetensors weights.
     pub(super) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {

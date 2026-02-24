@@ -5,10 +5,11 @@ use crate::{
     types::Backend,
 };
 use burn::{module::Param, nn::LayerNorm, prelude::*};
+use safetensors::SafeTensors;
 
 /// Load a LayerNorm layer from safetensors.
 pub(crate) fn load_layer_norm<const DIM: usize>(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     eps: f64,
     device: &Device<Backend>,

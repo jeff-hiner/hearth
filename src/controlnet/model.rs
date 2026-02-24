@@ -29,6 +29,7 @@ use burn::{
     },
     prelude::*,
 };
+use safetensors::SafeTensors;
 use std::marker::PhantomData;
 
 /// ControlNet model generic over SD variant.
@@ -70,7 +71,7 @@ impl<C: UnetConfig> ControlNet<C> {
     /// * `hint_channels` - Number of channels in the conditioning image (typically 3)
     /// * `device` - Compute device
     pub fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         hint_channels: usize,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -79,7 +80,7 @@ impl<C: UnetConfig> ControlNet<C> {
 
     /// Load with a custom prefix.
     pub fn load_with_prefix(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         hint_channels: usize,
         device: &Device<Backend>,
@@ -273,7 +274,7 @@ impl<C: UnetConfig> ControlNet<C> {
 
     /// Load input (down) blocks from checkpoint (same structure as UNet encoder).
     fn load_input_blocks(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         time_embed_dim: usize,
         device: &Device<Backend>,
@@ -406,7 +407,7 @@ pub type SdxlControlNet = ControlNet<SdxlUnet>;
 
 /// Load Conv2d with dynamic dimensions (1x1 kernel, stride 1).
 fn load_conv2d(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     kernel_size: usize,
     in_channels: usize,

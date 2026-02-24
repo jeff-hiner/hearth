@@ -20,6 +20,7 @@ use burn::{
     prelude::*,
     tensor::activation::gelu,
 };
+use safetensors::SafeTensors;
 
 /// DINOv2 ViT-S/14 encoder.
 ///
@@ -45,7 +46,7 @@ impl VitEncoder {
     ///
     /// Expects weights under the `pretrained.` prefix.
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -147,7 +148,7 @@ struct VitBlock {
 
 impl VitBlock {
     fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -195,7 +196,7 @@ struct VitAttention {
 
 impl VitAttention {
     fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -282,7 +283,7 @@ struct VitMlp {
 
 impl VitMlp {
     fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -317,7 +318,7 @@ impl VitMlp {
 
 /// Load a 3D tensor (e.g., cls_token, pos_embed).
 fn load_tensor_3d(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     name: &str,
     device: &Device<Backend>,
 ) -> Result<Tensor<Backend, 3>, LoadError> {
@@ -341,7 +342,7 @@ fn load_tensor_3d(
 
 /// Load a Conv2d with kernel=14, stride=14, padding=0 (patch embedding).
 fn load_patch_embed(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     device: &Device<Backend>,
 ) -> Result<Conv2d<Backend>, LoadError> {
@@ -361,7 +362,7 @@ fn load_patch_embed(
 
 /// Load a LayerNorm with embed_dim channels.
 fn load_layer_norm(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     device: &Device<Backend>,
 ) -> Result<LayerNorm<Backend>, LoadError> {
@@ -379,7 +380,7 @@ fn load_layer_norm(
 
 /// Load a Linear layer with dynamic dimensions.
 fn load_linear_dyn(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_features: usize,
     out_features: usize,

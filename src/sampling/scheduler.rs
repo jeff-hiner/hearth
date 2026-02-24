@@ -5,6 +5,7 @@ use crate::{
     types::Backend,
 };
 use burn::prelude::*;
+use safetensors::SafeTensors;
 
 /// Pre-computed diffusion schedule for sampling.
 ///
@@ -39,10 +40,7 @@ impl NoiseSchedule {
     /// Load scheduler parameters from SD checkpoint.
     ///
     /// Expects key: `alphas_cumprod` with shape `[num_timesteps]`.
-    pub fn load(
-        tensors: &safetensors::SafeTensors<'_>,
-        device: &Device<Backend>,
-    ) -> Result<Self, LoadError> {
+    pub fn load(tensors: &SafeTensors<'_>, device: &Device<Backend>) -> Result<Self, LoadError> {
         let alphas_cumprod_tensor = load_tensor_1d(tensors, "alphas_cumprod", device)?;
         let num_train_timesteps = alphas_cumprod_tensor.shape().dims::<1>()[0];
 

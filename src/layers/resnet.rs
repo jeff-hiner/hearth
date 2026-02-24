@@ -13,6 +13,7 @@ use burn::{
     prelude::*,
     tensor::activation::silu,
 };
+use safetensors::SafeTensors;
 
 /// A 2D ResNet block with group normalization.
 ///
@@ -33,7 +34,7 @@ pub(crate) struct ResnetBlock2D {
 impl ResnetBlock2D {
     /// Load a ResnetBlock2D from safetensors weights.
     pub(crate) fn load<const GROUPS: usize, const IN_CHANNELS: usize, const OUT_CHANNELS: usize>(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -92,7 +93,7 @@ impl ResnetBlock2D {
 
 /// Load a GroupNorm layer from safetensors.
 pub(crate) fn load_group_norm<const GROUPS: usize, const NUM_CHANNELS: usize>(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     device: &Device<Backend>,
 ) -> Result<GroupNorm<Backend>, LoadError> {
@@ -116,7 +117,7 @@ pub(crate) fn load_conv2d<
     const IN_CHANNELS: usize,
     const OUT_CHANNELS: usize,
 >(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     device: &Device<Backend>,
 ) -> Result<Conv2d<Backend>, LoadError> {

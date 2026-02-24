@@ -11,7 +11,10 @@
 //!   - models/clip/vocab.json
 //!   - models/clip/merges.txt
 
-use burn::tensor::{Distribution, Tensor};
+use burn::{
+    prelude::Backend as _,
+    tensor::{Device, Distribution, Tensor, TensorData},
+};
 use clap::Parser;
 use hearth::{
     clip::{ClipTokenizer, Sd15ClipTextEncoder, Sd15Conditioning},
@@ -24,11 +27,30 @@ use hearth::{
     },
     startup,
     types::Backend,
-    unet::Sd15Unet2D,
+    unet::{Sd15Unet, Sd15Unet2D},
     vae::Sd15VaeDecoder,
 };
-use std::{cell::Cell, path::Path, process, time::Instant};
+use std::{
+    cell::Cell,
+    path::{Path, PathBuf},
+    process,
+    time::Instant,
+};
 use tracing_subscriber::EnvFilter;
+
+#[derive(Debug, thiserror::Error)]
+enum Error {
+    #[error(transparent)]
+    Load(#[from] hearth::model_loader::LoadError),
+    #[error(transparent)]
+    Tokenizer(#[from] hearth::clip::TokenizerError),
+    #[error(transparent)]
+    Image(#[from] image::ImageError),
+    #[error(transparent)]
+    Data(#[from] burn::tensor::DataError),
+    #[error("failed to create image buffer")]
+    ImageBuffer,
+}
 
 /// Path to the SD 1.5 checkpoint file.
 const CHECKPOINT_PATH: &str = "models/checkpoints/v1-5-pruned-emaonly-fp16.safetensors";
@@ -58,7 +80,7 @@ struct Args {
 
     /// Output file path.
     #[arg(short, long, default_value = "output.png")]
-    output: String,
+    output: PathBuf,
 
     /// Random seed for reproducibility.
     #[arg(long)]
@@ -79,11 +101,11 @@ struct Args {
 
     /// ControlNet model path (repeatable; starts a new ControlNet group).
     #[arg(long = "cn-model")]
-    cn_model: Vec<String>,
+    cn_model: Vec<PathBuf>,
 
     /// Conditioning image for the corresponding ControlNet.
     #[arg(long = "cn-image")]
-    cn_image: Vec<String>,
+    cn_image: Vec<PathBuf>,
 
     /// Weight for the corresponding ControlNet (default: 1.0).
     #[arg(long = "cn-weight")]
@@ -99,14 +121,14 @@ struct Args {
 
     /// LoRA file path (repeatable).
     #[arg(long = "lora")]
-    lora: Vec<String>,
+    lora: Vec<PathBuf>,
 
     /// LoRA strength for UNet (default: 1.0, one per --lora).
     #[arg(long = "lora-strength")]
     lora_strength: Vec<f32>,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Error> {
     // Initialize tracing subscriber (reads RUST_LOG env var)
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
@@ -155,7 +177,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Set random seed if provided
     if let Some(seed) = args.seed {
-        <Backend as burn::tensor::backend::Backend>::seed(&device, seed);
+        Backend::seed(&device, seed);
         println!("Seed: {}", seed);
     }
 
@@ -254,7 +276,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Sampling ({} steps)...", args.steps);
     let start = Instant::now();
     let last_report = Cell::new(Instant::now());
-    let progress_cb = |current: usize, total: usize| {
+    let progress_cb = |current: usize, total: usize| -> bool {
         let now = Instant::now();
         if current == total || now.duration_since(last_report.get()).as_secs() >= 1 {
             last_report.set(now);
@@ -263,6 +285,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 current as f64 / total as f64 * 100.0
             );
         }
+        true // always continue (no cancellation in CLI)
     };
     let denoised = if has_controlnets {
         // ControlNet path: uses predict_noise_cfg_controlled (unbatched CFG)
@@ -402,7 +425,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Decoding completed in {:?}", start.elapsed());
 
     // Save image
-    println!("Saving to {}...", args.output);
+    println!("Saving to {}...", args.output.display());
     save_image(image, &args.output)?;
     println!("Done!");
 
@@ -429,8 +452,8 @@ struct LoadedControlNet {
 /// Returns an empty Vec if no ControlNets were specified.
 fn load_controlnets(
     args: &Args,
-    device: &burn::tensor::Device<Backend>,
-) -> Result<Vec<LoadedControlNet>, Box<dyn std::error::Error>> {
+    device: &Device<Backend>,
+) -> Result<Vec<LoadedControlNet>, Error> {
     let mut loaded = Vec::new();
 
     for i in 0..args.cn_model.len() {
@@ -440,8 +463,11 @@ fn load_controlnets(
         let start = args.cn_start.get(i).copied().unwrap_or(0.0);
         let end = args.cn_end.get(i).copied().unwrap_or(1.0);
 
-        println!("Loading ControlNet {i}: {model_path}");
-        println!("  hint: {image_path}, weight: {weight}, range: [{start}, {end}]");
+        println!("Loading ControlNet {i}: {}", model_path.display());
+        println!(
+            "  hint: {}, weight: {weight}, range: [{start}, {end}]",
+            image_path.display()
+        );
 
         let cn_start = Instant::now();
         let cn_file = SafeTensorsFile::open(Path::new(model_path))?;
@@ -464,9 +490,7 @@ fn load_controlnets(
 }
 
 /// Build borrowed [`ControlNetUnit`]s from loaded ControlNet data.
-fn build_controlnet_units<'a>(
-    loaded: &'a [LoadedControlNet],
-) -> Vec<ControlNetUnit<'a, hearth::unet::Sd15Unet>> {
+fn build_controlnet_units<'a>(loaded: &'a [LoadedControlNet]) -> Vec<ControlNetUnit<'a, Sd15Unet>> {
     loaded
         .iter()
         .map(|cn| ControlNetUnit {
@@ -481,11 +505,11 @@ fn build_controlnet_units<'a>(
 
 /// Load a conditioning image as a `[1, 3, H, W]` tensor in [0, 1].
 fn load_hint_image(
-    path: &str,
+    path: &Path,
     target_w: u32,
     target_h: u32,
-    device: &burn::tensor::Device<Backend>,
-) -> Result<Tensor<Backend, 4>, Box<dyn std::error::Error>> {
+    device: &Device<Backend>,
+) -> Result<Tensor<Backend, 4>, Error> {
     let img = image::open(path)?.resize_exact(target_w, target_h, image::imageops::Lanczos3);
     let rgb = img.to_rgb8();
     let (w, h) = (rgb.width() as usize, rgb.height() as usize);
@@ -502,7 +526,7 @@ fn load_hint_image(
         }
     }
 
-    let td = burn::tensor::TensorData::new(data, [1, 3, h, w])
+    let td = TensorData::new(data, [1, 3, h, w])
         .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>();
     Ok(Tensor::from_data(td, device))
 }
@@ -511,7 +535,7 @@ fn load_hint_image(
 ///
 /// Input: [1, 3, H, W] tensor in [-1, 1] range
 /// Output: RGB PNG file
-fn save_image(tensor: Tensor<Backend, 4>, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn save_image(tensor: Tensor<Backend, 4>, path: &Path) -> Result<(), Error> {
     let [batch, channels, height, width] = tensor.shape().dims();
     assert_eq!(batch, 1, "Only single image supported");
     assert_eq!(channels, 3, "Expected 3 channels (RGB)");
@@ -538,7 +562,7 @@ fn save_image(tensor: Tensor<Backend, 4>, path: &str) -> Result<(), Box<dyn std:
 
     // Create and save image
     let img = image::RgbImage::from_raw(width as u32, height as u32, rgb)
-        .ok_or("Failed to create image buffer")?;
+        .ok_or(Error::ImageBuffer)?;
     img.save(path)?;
 
     Ok(())

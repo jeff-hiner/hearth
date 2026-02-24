@@ -75,6 +75,8 @@ clap = { version = "4", features = ["derive"] }
 reqwest = { version = "0.13", default-features = false, features = ["json"] }
 # Extra tokio features for tests (fs for directory creation)
 tokio = { version = "1", features = ["fs"] }
+# Temporary directories for integration tests
+tempfile = "3"
 
 [patch.crates-io]
 # Fix for cube count overflow in large matmul operations (4096x4096 attention)

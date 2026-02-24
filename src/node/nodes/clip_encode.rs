@@ -6,8 +6,9 @@ use crate::{
         Node, ResolvedInput, SlotDef, ValueType, context::ExecutionContext, error::NodeError,
         value::NodeValue, variant::ClipVariant,
     },
-    types::Conditioning,
+    types::{Conditioning, ConditioningEntry, ConditioningMeta, ConditioningValue},
 };
+use std::collections::HashMap;
 
 /// Encodes a text prompt into conditioning using a CLIP model.
 ///
@@ -129,9 +130,6 @@ impl Node for ClipTextEncode {
 /// The `y` (pooled) vector is stored in metadata under the key `"y"` so that
 /// KSampler can reconstruct the `SdxlConditioning` from a `Conditioning`.
 fn wrap_sdxl_conditioning(cond: SdxlConditioning) -> Conditioning {
-    use crate::types::{ConditioningEntry, ConditioningMeta, ConditioningValue};
-    use std::collections::HashMap;
-
     let mut meta: ConditioningMeta = HashMap::new();
     meta.insert("y".to_string(), ConditioningValue::Tensor(cond.y));
 

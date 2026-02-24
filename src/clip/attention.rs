@@ -36,7 +36,7 @@ impl<const HIDDEN: usize, const HEADS: usize> ClipAttention<HIDDEN, HEADS> {
     /// - `{prefix}.v_proj.{weight,bias}`
     /// - `{prefix}.out_proj.{weight,bias}`
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {

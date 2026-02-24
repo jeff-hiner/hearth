@@ -28,6 +28,7 @@ use burn::{
         ops::{InterpolateMode, InterpolateOptions},
     },
 };
+use safetensors::SafeTensors;
 
 /// DPT decoder that fuses multi-scale ViT features into a depth map.
 #[derive(Debug)]
@@ -58,7 +59,7 @@ impl DptDecoder {
     ///
     /// Expects weights under the `depth_head.` prefix.
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
@@ -359,7 +360,7 @@ struct RefineNet {
 
 impl RefineNet {
     fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         features: usize,
         device: &Device<Backend>,
@@ -449,7 +450,7 @@ struct ResidualConvUnit {
 
 impl ResidualConvUnit {
     fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         features: usize,
         device: &Device<Backend>,
@@ -491,7 +492,7 @@ impl ResidualConvUnit {
 
 /// Load a Conv2d with bias.
 fn load_conv2d(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     kernel_size: usize,
     in_channels: usize,
@@ -516,7 +517,7 @@ fn load_conv2d(
 
 /// Load a Conv2d without bias.
 fn load_conv2d_no_bias(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     kernel_size: usize,
     in_channels: usize,
@@ -540,7 +541,7 @@ fn load_conv2d_no_bias(
 
 /// Load a Conv2d with custom stride and bias.
 fn load_conv2d_with_stride(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     kernel_size: usize,
     in_channels: usize,
@@ -561,7 +562,7 @@ fn load_conv2d_with_stride(
 
 /// Load a ConvTranspose2d with bias.
 fn load_conv_transpose2d(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_channels: usize,
     out_channels: usize,

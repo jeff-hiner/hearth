@@ -3,7 +3,7 @@
 use std::{net::SocketAddr, path::PathBuf};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> std::io::Result<()> {
     // Initialize tracing
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -12,8 +12,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    let comfyui_addr: SocketAddr = "127.0.0.1:8188".parse()?;
-    let a1111_addr: SocketAddr = "127.0.0.1:7860".parse()?;
+    let comfyui_addr: SocketAddr = "127.0.0.1:8188".parse().unwrap();
+    let a1111_addr: SocketAddr = "127.0.0.1:7860".parse().unwrap();
     let models_dir = PathBuf::from("models");
     let output_dir = PathBuf::from("output");
 

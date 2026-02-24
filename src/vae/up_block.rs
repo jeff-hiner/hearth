@@ -6,6 +6,7 @@ use crate::{
     types::Backend,
 };
 use burn::prelude::*;
+use safetensors::SafeTensors;
 
 /// Number of ResNet layers per up block (LAYERS_PER_BLOCK + 1 = 3).
 const RESNETS_PER_BLOCK: usize = 3;
@@ -20,7 +21,7 @@ pub(super) struct UpDecoderBlock2D<const GROUPS: usize> {
 impl<const GROUPS: usize> UpDecoderBlock2D<GROUPS> {
     /// Load an UpDecoderBlock2D from safetensors weights.
     pub(super) fn load<const IN_CHANNELS: usize, const OUT_CHANNELS: usize>(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         add_upsample: bool,
         device: &Device<Backend>,

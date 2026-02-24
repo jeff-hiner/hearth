@@ -5,6 +5,7 @@
 use super::{decoder::DptDecoder, encoder::VitEncoder};
 use crate::{model_loader::LoadError, types::Backend};
 use burn::{prelude::*, tensor::activation::relu};
+use safetensors::SafeTensors;
 
 /// Depth Anything V2 Small (ViT-S/14 encoder + DPT decoder).
 ///
@@ -31,10 +32,7 @@ impl DepthAnythingV2 {
     /// Expected key prefixes:
     /// - `pretrained.*` — ViT encoder weights
     /// - `depth_head.*` — DPT decoder weights
-    pub fn load(
-        tensors: &safetensors::SafeTensors<'_>,
-        device: &Device<Backend>,
-    ) -> Result<Self, LoadError> {
+    pub fn load(tensors: &SafeTensors<'_>, device: &Device<Backend>) -> Result<Self, LoadError> {
         let encoder = VitEncoder::load(tensors, "pretrained", device)?;
         let decoder = DptDecoder::load(tensors, "depth_head", device)?;
 

@@ -17,6 +17,7 @@ use crate::{
 };
 use burn::{module::Param, nn::Linear, prelude::*};
 use safetensors::SafeTensors;
+use std::path::Path;
 
 /// LoRA key naming format.
 ///
@@ -58,7 +59,7 @@ pub struct LoraFile {
 
 impl LoraFile {
     /// Open a LoRA safetensors file.
-    pub fn open(path: impl AsRef<std::path::Path>) -> Result<Self, LoadError> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, LoadError> {
         let file = SafeTensorsFile::open(path)?;
         Ok(Self { file })
     }

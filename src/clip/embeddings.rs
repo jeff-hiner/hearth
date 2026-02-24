@@ -7,6 +7,7 @@ use crate::{
     types::Backend,
 };
 use burn::{module::Param, nn::Embedding, prelude::*};
+use safetensors::SafeTensors;
 
 /// CLIP text embeddings combining token and position embeddings.
 ///
@@ -29,7 +30,7 @@ impl<const VOCAB: usize, const SEQ_LEN: usize, const HIDDEN: usize>
     /// - `{prefix}.token_embedding.weight` shape `[VOCAB, HIDDEN]`
     /// - `{prefix}.position_embedding.weight` shape `[SEQ_LEN, HIDDEN]`
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {

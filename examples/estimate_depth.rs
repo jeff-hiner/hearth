@@ -9,7 +9,10 @@
 //! Requires:
 //!   - models/depth/depth_anything_v2_vits.safetensors
 
-use burn::prelude::*;
+use burn::{
+    prelude::*,
+    tensor::{Device, TensorData},
+};
 use clap::Parser;
 use hearth::{
     depth::{DEFAULT_RESOLUTION, DepthAnythingV2, IMAGENET_MEAN, IMAGENET_STD},
@@ -17,8 +20,25 @@ use hearth::{
     startup,
     types::Backend,
 };
-use std::{path::Path, process, time::Instant};
+use image::imageops::FilterType;
+use std::{
+    path::{Path, PathBuf},
+    process,
+    time::Instant,
+};
 use tracing_subscriber::EnvFilter;
+
+#[derive(Debug, thiserror::Error)]
+enum Error {
+    #[error(transparent)]
+    Load(#[from] hearth::model_loader::LoadError),
+    #[error(transparent)]
+    Image(#[from] image::ImageError),
+    #[error(transparent)]
+    Data(#[from] burn::tensor::DataError),
+    #[error("failed to create image buffer")]
+    ImageBuffer,
+}
 
 /// Default path to the Depth Anything V2 Small model.
 const MODEL_PATH: &str = "models/depth/depth_anything_v2_vits_fp16.safetensors";
@@ -28,11 +48,11 @@ const MODEL_PATH: &str = "models/depth/depth_anything_v2_vits_fp16.safetensors";
 #[command(version, about)]
 struct Args {
     /// Input image path (any format supported by the image crate).
-    input: String,
+    input: PathBuf,
 
     /// Output depth map path (16-bit grayscale PNG).
     #[arg(short, long, default_value = "depth.png")]
-    output: String,
+    output: PathBuf,
 
     /// Inference resolution (must be divisible by 14).
     #[arg(long, default_value_t = DEFAULT_RESOLUTION)]
@@ -40,10 +60,10 @@ struct Args {
 
     /// Path to the Depth Anything V2 model file.
     #[arg(long, default_value = MODEL_PATH)]
-    model: String,
+    model: PathBuf,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Error> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
@@ -59,21 +79,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("Hearth Depth Estimator");
-    println!("Input: {}", args.input);
-    println!("Output: {}", args.output);
+    println!("Input: {}", args.input.display());
+    println!("Output: {}", args.output.display());
     println!("Resolution: {}x{}", args.resolution, args.resolution);
     println!();
 
-    let model_path = Path::new(&args.model);
-    let input_path = Path::new(&args.input);
-
-    let file_check = startup::check_model_files(&[model_path, input_path]);
+    let file_check = startup::check_model_files(&[&args.model, &args.input]);
     if !file_check.all_found() {
         eprintln!("{}", file_check.format_error());
         process::exit(1);
     }
 
-    let device: burn::tensor::Device<Backend> = Default::default();
+    let device: Device<Backend> = Default::default();
 
     // Load input image
     println!("Loading input image...");
@@ -85,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load model
     println!("Loading Depth Anything V2 Small...");
     let start = Instant::now();
-    let file = SafeTensorsFile::open(model_path)?;
+    let file = SafeTensorsFile::open(&args.model)?;
     let tensors = file.tensors()?;
     let model = DepthAnythingV2::load(&tensors, &device)?;
     println!("  Model loaded in {:?}", start.elapsed());
@@ -99,7 +116,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Save output
     println!("Saving depth map...");
     save_depth_map(depth, orig_w, orig_h, &args.output)?;
-    println!("Done! Saved to {}", args.output);
+    println!("Done! Saved to {}", args.output.display());
 
     Ok(())
 }
@@ -108,19 +125,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///
 /// Returns `(tensor [1, 3, res, res], original_width, original_height)`.
 fn load_and_preprocess(
-    path: &str,
+    path: &Path,
     resolution: usize,
-    device: &burn::tensor::Device<Backend>,
-) -> Result<(Tensor<Backend, 4>, u32, u32), Box<dyn std::error::Error>> {
+    device: &Device<Backend>,
+) -> Result<(Tensor<Backend, 4>, u32, u32), Error> {
     let img = image::open(path)?;
     let (orig_w, orig_h) = (img.width(), img.height());
 
     // Resize to target resolution
-    let img = img.resize_exact(
-        resolution as u32,
-        resolution as u32,
-        image::imageops::FilterType::Lanczos3,
-    );
+    let img = img.resize_exact(resolution as u32, resolution as u32, FilterType::Lanczos3);
     let rgb = img.to_rgb8();
 
     // Build tensor in channel-first order [1, 3, H, W]
@@ -133,15 +146,15 @@ fn load_and_preprocess(
         chw[2 * hw + i] = p[2] as f32 / 255.0;
     }
     // Convert f32 data to the backend's native float type (f16) before sending to GPU
-    let td = burn::tensor::TensorData::new(chw, [1, 3, res, res])
+    let td = TensorData::new(chw, [1, 3, res, res])
         .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>();
     let tensor: Tensor<Backend, 4> = Tensor::from_data(td, device);
 
     // ImageNet normalization: (x - mean) / std
-    let mean_td = burn::tensor::TensorData::new(IMAGENET_MEAN.to_vec(), [1, 3, 1, 1])
+    let mean_td = TensorData::new(IMAGENET_MEAN.to_vec(), [1, 3, 1, 1])
         .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>();
     let mean: Tensor<Backend, 4> = Tensor::from_data(mean_td, device);
-    let std_td = burn::tensor::TensorData::new(IMAGENET_STD.to_vec(), [1, 3, 1, 1])
+    let std_td = TensorData::new(IMAGENET_STD.to_vec(), [1, 3, 1, 1])
         .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>();
     let std: Tensor<Backend, 4> = Tensor::from_data(std_td, device);
     let tensor = (tensor - mean) / std;
@@ -156,8 +169,8 @@ fn save_depth_map(
     depth: Tensor<Backend, 4>,
     orig_w: u32,
     orig_h: u32,
-    path: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+    path: &Path,
+) -> Result<(), Error> {
     // depth is [1, 1, H_out, W_out], convert to f32
     let [_b, _c, h, w] = depth.shape().dims();
     let data: Vec<f32> = depth.into_data().convert::<f32>().to_vec()?;
@@ -175,15 +188,10 @@ fn save_depth_map(
 
     let depth_img: image::ImageBuffer<image::Luma<u16>, Vec<u16>> =
         image::ImageBuffer::from_raw(w as u32, h as u32, pixels_u16)
-            .ok_or("Failed to create 16-bit depth image buffer")?;
+            .ok_or(Error::ImageBuffer)?;
 
     // Resize to original image dimensions
-    let resized = image::imageops::resize(
-        &depth_img,
-        orig_w,
-        orig_h,
-        image::imageops::FilterType::Lanczos3,
-    );
+    let resized = image::imageops::resize(&depth_img, orig_w, orig_h, FilterType::Lanczos3);
 
     resized.save(path)?;
 

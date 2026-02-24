@@ -10,6 +10,7 @@ use burn::{
         ops::{InterpolateMode, InterpolateOptions},
     },
 };
+use safetensors::SafeTensors;
 
 /// 2D upsampling layer using nearest-neighbor interpolation followed by convolution.
 #[derive(Debug)]
@@ -20,7 +21,7 @@ pub(crate) struct Upsample2D {
 impl Upsample2D {
     /// Load an Upsample2D from safetensors weights.
     pub(crate) fn load<const CHANNELS: usize>(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {

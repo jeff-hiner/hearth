@@ -56,7 +56,7 @@ impl ResnetBlock2D {
     /// - `{prefix}.out_layers.3` - conv2
     /// - `{prefix}.skip_connection` - skip conv (optional)
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         in_channels: usize,
         out_channels: usize,
@@ -219,7 +219,7 @@ impl ResnetBlock2D {
 
 /// Load GroupNorm with dynamic dimensions.
 fn load_group_norm_dyn(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     groups: usize,
     channels: usize,
@@ -239,7 +239,7 @@ fn load_group_norm_dyn(
 
 /// Load Conv2d with dynamic dimensions.
 fn load_conv2d_dyn(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     kernel_size: usize,
     in_channels: usize,
@@ -262,7 +262,7 @@ fn load_conv2d_dyn(
 
 /// Load Linear with dynamic dimensions.
 fn load_linear_dyn(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     in_features: usize,
     out_features: usize,

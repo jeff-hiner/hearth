@@ -31,6 +31,7 @@ use burn::{
     prelude::*,
     tensor::activation::silu,
 };
+use safetensors::SafeTensors;
 
 /// Hint encoder for ControlNet conditioning images.
 ///
@@ -47,7 +48,7 @@ impl HintEncoder {
     ///
     /// Weights are at `{prefix}.{0,2,4,6,8,10,12,14}.{weight,bias}`.
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         hint_channels: usize,
         base_channels: usize,
@@ -111,7 +112,7 @@ impl HintEncoder {
 
 /// Load a Conv2d layer with stride and padding.
 fn load_conv2d(
-    tensors: &safetensors::SafeTensors<'_>,
+    tensors: &SafeTensors<'_>,
     prefix: &str,
     kernel_size: usize,
     in_channels: usize,

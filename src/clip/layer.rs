@@ -45,7 +45,7 @@ impl<
     /// - `{prefix}.layer_norm2.{weight,bias}`
     /// - `{prefix}.mlp.fc{1,2}.{weight,bias}`
     pub(crate) fn load(
-        tensors: &safetensors::SafeTensors<'_>,
+        tensors: &SafeTensors<'_>,
         prefix: &str,
         device: &Device<Backend>,
     ) -> Result<Self, LoadError> {
