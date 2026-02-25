@@ -15,10 +15,10 @@ use crate::{
     },
     sampling::{SamplerKind, SchedulerKind},
     server::{AppState, ProgressInfo, error::ApiError},
-    types::Backend,
+    types::{Backend, Image},
 };
 use axum::{Json, extract::State};
-use burn::tensor::Tensor;
+use burn::tensor::{Device, Tensor};
 use std::sync::Arc;
 
 /// Handle img2img requests by building and executing a node graph.
@@ -73,7 +73,8 @@ pub(super) async fn img2img(
     })?;
 
     // Decode init image → [1, H, W, 3] in [0, 1]
-    let init_image = decode_base64_image(init_b64)?;
+    let init_image =
+        Image::new(Tensor::from_data(decode_base64_image(init_b64)?, &state.device));
 
     // Determine checkpoint
     let ckpt_name = match req
@@ -114,6 +115,7 @@ pub(super) async fn img2img(
     // Prepare mask once (if present)
     let prepared_mask = if let Some(ref mask_b64) = req.mask {
         Some(decode_and_prepare_mask(
+            &state.device,
             mask_b64,
             &init_image,
             req.inpainting_mask_invert,
@@ -157,8 +159,13 @@ pub(super) async fn img2img(
         graph.add_edge(loader_id, 1, clip_neg_id, 0);
         graph.add_edge(loader_id, 2, vae_encode_id, 1);
 
-        let (pos_id, pos_out) =
-            apply_controlnet_units(&mut graph, &req.alwayson_scripts, clip_pos_id, 0)?;
+        let (pos_id, pos_out) = apply_controlnet_units(
+            &state.device,
+            &mut graph,
+            &req.alwayson_scripts,
+            clip_pos_id,
+            0,
+        )?;
 
         graph.add_edge(loader_id, 0, ksampler_id, 0);
         graph.add_edge(pos_id, pos_out, ksampler_id, 1);
@@ -246,12 +253,13 @@ pub(super) async fn img2img(
 ///
 /// Returns a mask tensor `[1, H, W]` in `[0, 1]` where 1 = inpaint region.
 fn decode_and_prepare_mask(
+    device: &Device<Backend>,
     mask_b64: &str,
     init_image: &crate::types::Image,
     invert: u32,
     blur_radius: u32,
 ) -> Result<Tensor<Backend, 3>, ApiError> {
-    let mut mask = decode_base64_mask(mask_b64)?;
+    let mut mask = Tensor::from_data(decode_base64_mask(mask_b64)?, device);
 
     // Resize mask to match init image dimensions if needed
     let [_, img_h, img_w, _] = init_image.shape();

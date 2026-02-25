@@ -11,7 +11,10 @@
 //!   - models/clip/vocab.json
 //!   - models/clip/merges.txt
 
-use burn::tensor::{Device, Distribution, Tensor, TensorData, backend::Backend as _};
+use burn::{
+    backend::wgpu::{RuntimeOptions, WgpuDevice, graphics::AutoGraphicsApi, init_setup},
+    tensor::{Device, Distribution, Tensor, TensorData, backend::Backend as _},
+};
 use clap::Parser;
 use hearth::{
     clip::{ClipTokenizer, OpenClipTextEncoder, SdxlClipLTextEncoder, SdxlConditioning},
@@ -159,7 +162,12 @@ fn main() -> Result<(), Error> {
     );
     println!();
 
-    let device = Default::default();
+    // Pre-register the wgpu runtime with tasks_max=512 to keep the GPU saturated.
+    init_setup::<AutoGraphicsApi>(
+        &WgpuDevice::DefaultDevice,
+        RuntimeOptions { tasks_max: 512, ..Default::default() },
+    );
+    let device: Device<Backend> = Default::default();
 
     // Set random seed if provided
     if let Some(seed) = args.seed {

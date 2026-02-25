@@ -116,8 +116,13 @@ pub(super) async fn txt2img(
         graph.add_edge(loader_id, 1, clip_pos_id, 0);
         graph.add_edge(loader_id, 1, clip_neg_id, 0);
 
-        let (pos_id, pos_out) =
-            apply_controlnet_units(&mut graph, &req.alwayson_scripts, clip_pos_id, 0)?;
+        let (pos_id, pos_out) = apply_controlnet_units(
+            &state.device,
+            &mut graph,
+            &req.alwayson_scripts,
+            clip_pos_id,
+            0,
+        )?;
 
         graph.add_edge(loader_id, 0, ksampler_id, 0);
         graph.add_edge(pos_id, pos_out, ksampler_id, 1);

@@ -1,6 +1,10 @@
 //! Shared application state for the server.
 
-use crate::node::context::ExecutionContext;
+use crate::{node::context::ExecutionContext, types::Backend};
+use burn::{
+    backend::wgpu::{RuntimeOptions, WgpuDevice, graphics::AutoGraphicsApi, init_setup},
+    tensor::Device,
+};
 use std::{
     path::PathBuf,
     sync::{
@@ -14,6 +18,9 @@ use tokio::sync::{Mutex, watch};
 pub struct AppState {
     /// Execution context (owns model manager + device). Mutex serializes GPU access.
     pub ctx: Mutex<ExecutionContext>,
+    /// The GPU device used for inference. Exposed so request handlers can create tensors
+    /// without calling `Default::default()` (which skips our `init_setup` options).
+    pub device: Device<Backend>,
     /// Base directory for model files.
     pub models_dir: PathBuf,
     /// Base directory for output images.
@@ -31,12 +38,19 @@ pub struct AppState {
 impl AppState {
     /// Create a new `AppState` wrapped in `Arc`.
     pub fn new(models_dir: PathBuf, output_dir: PathBuf) -> Arc<Self> {
-        let device = Default::default();
+        // Pre-register the wgpu runtime with an explicit tasks_max so that the
+        // subsequent Default::default() device construction reuses this server.
+        init_setup::<AutoGraphicsApi>(
+            &WgpuDevice::DefaultDevice,
+            RuntimeOptions { tasks_max: 512, ..Default::default() },
+        );
+        let device: Device<Backend> = Default::default();
         let (progress_tx, progress_rx) = watch::channel(ProgressInfo::default());
-        let ctx = ExecutionContext::new(device, models_dir.clone(), output_dir.clone());
+        let ctx = ExecutionContext::new(device.clone(), models_dir.clone(), output_dir.clone());
 
         Arc::new(Self {
             ctx: Mutex::new(ctx),
+            device,
             models_dir,
             output_dir,
             options: Mutex::new(ServerOptions::default()),

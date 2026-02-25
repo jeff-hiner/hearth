@@ -12,15 +12,16 @@ use crate::{
     types::{Backend, Image},
 };
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
-use burn::tensor::{Tensor, TensorData};
+use burn::tensor::{Device, Tensor, TensorData};
 use image::{ImageEncoder, codecs::png::PngEncoder};
 use std::time::SystemTime;
 
-/// Decode a base64-encoded PNG/JPEG image into an [`Image`] tensor.
+/// Decode a base64-encoded PNG/JPEG image into raw [`TensorData`].
 ///
 /// Accepts optional `data:image/...;base64,` prefix (stripped automatically).
-/// Returns `[1, H, W, 3]` in `[0.0, 1.0]` on the default device.
-pub(super) fn decode_base64_image(b64: &str) -> Result<Image, ApiError> {
+/// Returns `[1, H, W, 3]` f32 data in `[0.0, 1.0]`. Callers must supply a
+/// device to construct the final tensor.
+pub(super) fn decode_base64_image(b64: &str) -> Result<TensorData, ApiError> {
     // Strip optional data URI prefix
     let raw_b64 = if let Some(idx) = b64.find(";base64,") {
         &b64[idx + 8..]
@@ -47,18 +48,15 @@ pub(super) fn decode_base64_image(b64: &str) -> Result<Image, ApiError> {
         data[i * 3 + 2] = chunk[2] as f32 / 255.0;
     }
 
-    let device = Default::default();
-    let td = TensorData::new(data, [1, h, w, 3])
-        .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>();
-    let tensor = Tensor::from_data(td, &device);
-
-    Ok(Image::new(tensor))
+    Ok(TensorData::new(data, [1, h, w, 3])
+        .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>())
 }
 
-/// Decode a base64-encoded image into a grayscale mask tensor.
+/// Decode a base64-encoded image into raw grayscale [`TensorData`].
 ///
-/// Returns `[1, H, W]` in `[0.0, 1.0]` where 1.0 = white = inpaint region.
-pub(super) fn decode_base64_mask(b64: &str) -> Result<Tensor<Backend, 3>, ApiError> {
+/// Returns `[1, H, W]` f32 data in `[0.0, 1.0]` where 1.0 = white = inpaint
+/// region. Callers must supply a device to construct the final tensor.
+pub(super) fn decode_base64_mask(b64: &str) -> Result<TensorData, ApiError> {
     let raw_b64 = if let Some(idx) = b64.find(";base64,") {
         &b64[idx + 8..]
     } else {
@@ -78,12 +76,8 @@ pub(super) fn decode_base64_mask(b64: &str) -> Result<Tensor<Backend, 3>, ApiErr
 
     let data: Vec<f32> = raw.iter().map(|&v| v as f32 / 255.0).collect();
 
-    let device = Default::default();
-    let td = TensorData::new(data, [1, h, w])
-        .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>();
-    let tensor = Tensor::from_data(td, &device);
-
-    Ok(tensor)
+    Ok(TensorData::new(data, [1, h, w])
+        .convert::<<Backend as burn::tensor::backend::Backend>::FloatElem>())
 }
 
 /// Encode an image tensor as base64 PNG strings (one per batch element).
@@ -146,6 +140,7 @@ pub(super) fn rand_seed() -> u64 {
 ///
 /// Rejects units with `module != "none"` since Hearth doesn't support preprocessors.
 pub(super) fn apply_controlnet_units(
+    device: &Device<Backend>,
     graph: &mut ExecutionGraph,
     scripts: &Option<AlwaysOnScripts>,
     pos_cond_id: NodeId,
@@ -194,7 +189,8 @@ pub(super) fn apply_controlnet_units(
             ApiError::BadRequest(format!("ControlNet unit {i} is enabled but has no image"))
         })?;
 
-        let control_image = decode_base64_image(image_b64)?;
+        let control_image =
+            Image::new(Tensor::from_data(decode_base64_image(image_b64)?, device));
 
         let loader_id = graph.add_node(Box::new(ControlNetLoader::new(unit.model.clone().into())));
         let apply_id = graph.add_node(Box::new(ControlNetApply::new(
