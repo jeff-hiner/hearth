@@ -187,8 +187,7 @@ fn save_depth_map(
         .collect();
 
     let depth_img: image::ImageBuffer<image::Luma<u16>, Vec<u16>> =
-        image::ImageBuffer::from_raw(w as u32, h as u32, pixels_u16)
-            .ok_or(Error::ImageBuffer)?;
+        image::ImageBuffer::from_raw(w as u32, h as u32, pixels_u16).ok_or(Error::ImageBuffer)?;
 
     // Resize to original image dimensions
     let resized = image::imageops::resize(&depth_img, orig_w, orig_h, FilterType::Lanczos3);

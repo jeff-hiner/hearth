@@ -171,7 +171,10 @@ pub(super) struct KSamplerAdvancedInputs {
     /// Latent image to denoise (slot 3).
     pub latent_image: Link,
     /// Whether to inject initial noise (`"enable"` or `"disable"`).
-    #[serde(default = "default_enable", deserialize_with = "deserialize_enable_disable")]
+    #[serde(
+        default = "default_enable",
+        deserialize_with = "deserialize_enable_disable"
+    )]
     pub add_noise: bool,
     /// Random seed.
     #[serde(default)]
@@ -292,7 +295,10 @@ where
     match <&str>::deserialize(deserializer)? {
         "enable" => Ok(true),
         "disable" => Ok(false),
-        other => Err(serde::de::Error::unknown_variant(other, &["enable", "disable"])),
+        other => Err(serde::de::Error::unknown_variant(
+            other,
+            &["enable", "disable"],
+        )),
     }
 }
 fn default_comfyui() -> String {

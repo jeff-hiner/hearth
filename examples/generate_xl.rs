@@ -457,10 +457,7 @@ struct LoadedControlNet {
 }
 
 /// Load ControlNet models and hint images from CLI args.
-fn load_controlnets(
-    args: &Args,
-    device: &Device<Backend>,
-) -> Result<Vec<LoadedControlNet>, Error> {
+fn load_controlnets(args: &Args, device: &Device<Backend>) -> Result<Vec<LoadedControlNet>, Error> {
     let mut loaded = Vec::new();
 
     for i in 0..args.cn_model.len() {
@@ -568,8 +565,8 @@ fn save_image(tensor: Tensor<Backend, 4>, path: &Path) -> Result<(), Error> {
     }
 
     // Create and save image
-    let img = image::RgbImage::from_raw(width as u32, height as u32, rgb)
-        .ok_or(Error::ImageBuffer)?;
+    let img =
+        image::RgbImage::from_raw(width as u32, height as u32, rgb).ok_or(Error::ImageBuffer)?;
     img.save(path)?;
 
     Ok(())

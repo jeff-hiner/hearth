@@ -175,9 +175,15 @@ async fn progress() {
 
     let state = &body["state"];
     assert!(state["sampling_step"].is_u64(), "should have sampling_step");
-    assert!(state["sampling_steps"].is_u64(), "should have sampling_steps");
+    assert!(
+        state["sampling_steps"].is_u64(),
+        "should have sampling_steps"
+    );
     assert!(state["skipped"].is_boolean(), "should have skipped bool");
-    assert!(state["interrupted"].is_boolean(), "should have interrupted bool");
+    assert!(
+        state["interrupted"].is_boolean(),
+        "should have interrupted bool"
+    );
 
     handle.abort();
 }
@@ -286,7 +292,10 @@ async fn sd_models_empty_dir() {
         .expect("sd-models request failed");
     assert_eq!(resp.status(), 200);
     let models: Vec<serde_json::Value> = resp.json().await.expect("parse sd-models");
-    assert!(models.is_empty(), "empty checkpoints dir should return empty list");
+    assert!(
+        models.is_empty(),
+        "empty checkpoints dir should return empty list"
+    );
 
     handle.abort();
 }
