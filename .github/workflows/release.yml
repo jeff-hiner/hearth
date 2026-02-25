@@ -20,6 +20,7 @@ jobs:
             os: windows
             arch: x86_64
             ext: zip
+            cargo_target_dir: 'D:/target'
           - target: x86_64-unknown-linux-gnu
             runner: ubuntu-latest
             os: linux
@@ -38,6 +39,8 @@ jobs:
 
     runs-on: ${{ matrix.runner }}
     name: Build (${{ matrix.target }})
+    env:
+      CARGO_TARGET_DIR: ${{ matrix.cargo_target_dir || 'target' }}
 
     steps:
       - name: Checkout
@@ -78,8 +81,8 @@ jobs:
         run: |
           staging="hearth-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.arch }}"
           mkdir "$staging"
-          cp target/${{ matrix.target }}/release/hearth.exe "$staging/"
-          cp target/${{ matrix.target }}/release/examples/*.exe "$staging/"
+          cp $CARGO_TARGET_DIR/${{ matrix.target }}/release/hearth.exe "$staging/"
+          cp $CARGO_TARGET_DIR/${{ matrix.target }}/release/examples/*.exe "$staging/"
           cp models/*.py "$staging/"
           7z a "$staging.zip" "$staging"
 

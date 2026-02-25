@@ -1,7 +1,7 @@
 [package]
 name = "hearth"
 authors = ["Jeff Hiner <37913568+jeff-hiner@users.noreply.github.com>"]
-version = "0.0.1"
+version = "0.1.0-alpha.0"
 edition = "2024"
 description = "A portable Rust backend for diffusion model inference"
 license = "MIT OR Apache-2.0"
