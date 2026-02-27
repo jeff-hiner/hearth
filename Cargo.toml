@@ -30,7 +30,7 @@ wgpu = { version = "26", optional = true }
 burn = { version = "0.20.0", default-features = false, features = ["std"] }
 
 # Async runtime
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "sync"] }
 
 # Logging/tracing
 tracing = "0.1"
@@ -48,6 +48,8 @@ unicode-normalization = "0.1"
 # JSON serialization (node registry, API)
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_with = "3"
+strum = { version = "0.27", features = ["derive"] }
 
 # Image I/O (SaveImage node, API responses)
 image = { version = "0.25", default-features = false, features = [
@@ -57,7 +59,7 @@ image = { version = "0.25", default-features = false, features = [
 
 # HTTP server
 axum = { version = "0.8", features = ["ws"] }
-tower-http = { version = "0.6", features = ["cors"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
 
 # Unique IDs for prompt tracking
 uuid = { version = "1", features = ["v4"] }

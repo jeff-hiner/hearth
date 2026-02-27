@@ -1,52 +1,32 @@
 //! Sampler selection enum for CLI and ComfyUI integration.
 
 use serde::{Deserialize, Serialize};
-use std::{fmt, str::FromStr};
+use strum::{Display, EnumString, VariantArray};
 
 /// Available sampling algorithms.
 ///
 /// Used for CLI argument parsing and ComfyUI workflow deserialization.
 /// Each variant corresponds to a sampler implementation in the [`super`] module.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, EnumString, VariantArray,
+)]
+#[strum(ascii_case_insensitive)]
 #[serde(rename_all = "snake_case")]
 pub enum SamplerKind {
     /// Euler method (first-order deterministic).
+    #[strum(serialize = "Euler")]
     Euler,
     /// Euler Ancestral (first-order stochastic).
+    #[strum(serialize = "Euler_a", serialize = "Euler a")]
     EulerA,
     /// DPM++ 2M (second-order deterministic).
     #[serde(rename = "dpm++_2m")]
+    #[strum(serialize = "DPM++_2M", serialize = "DPM++ 2M")]
     DpmPp2m,
     /// DPM++ SDE (second-order stochastic).
     #[serde(rename = "dpm++_sde")]
+    #[strum(serialize = "DPM++_SDE", serialize = "DPM++ SDE")]
     DpmPpSde,
-}
-
-impl FromStr for SamplerKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "euler" => Ok(Self::Euler),
-            "euler_a" => Ok(Self::EulerA),
-            "dpm++_2m" => Ok(Self::DpmPp2m),
-            "dpm++_sde" => Ok(Self::DpmPpSde),
-            _ => Err(format!(
-                "unknown sampler '{s}', expected one of: euler, euler_a, dpm++_2m, dpm++_sde"
-            )),
-        }
-    }
-}
-
-impl fmt::Display for SamplerKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Euler => write!(f, "euler"),
-            Self::EulerA => write!(f, "euler_a"),
-            Self::DpmPp2m => write!(f, "dpm++_2m"),
-            Self::DpmPpSde => write!(f, "dpm++_sde"),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -87,5 +67,32 @@ mod tests {
     #[test]
     fn parse_unknown() {
         assert!("unknown".parse::<SamplerKind>().is_err());
+    }
+
+    #[test]
+    fn parse_case_insensitive() {
+        assert_eq!("Euler".parse::<SamplerKind>().unwrap(), SamplerKind::Euler);
+        assert_eq!("EULER".parse::<SamplerKind>().unwrap(), SamplerKind::Euler);
+        assert_eq!(
+            "Euler a".parse::<SamplerKind>().unwrap(),
+            SamplerKind::EulerA
+        );
+        assert_eq!(
+            "Euler A".parse::<SamplerKind>().unwrap(),
+            SamplerKind::EulerA
+        );
+        assert_eq!(
+            "DPM++ SDE".parse::<SamplerKind>().unwrap(),
+            SamplerKind::DpmPpSde
+        );
+        assert_eq!(
+            "DPM++ 2M".parse::<SamplerKind>().unwrap(),
+            SamplerKind::DpmPp2m
+        );
+    }
+
+    #[test]
+    fn variants_count() {
+        assert_eq!(SamplerKind::VARIANTS.len(), 4);
     }
 }

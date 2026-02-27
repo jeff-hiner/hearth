@@ -49,20 +49,24 @@ use tokio::net::TcpListener;
 /// Build a router serving only the ComfyUI API.
 pub fn build_comfyui_router(state: Arc<AppState>) -> Router {
     let cors = tower_http::cors::CorsLayer::permissive();
+    let trace = tower_http::trace::TraceLayer::new_for_http();
 
     Router::new()
         .merge(comfyui::router())
         .layer(cors)
+        .layer(trace)
         .with_state(state)
 }
 
 /// Build a router serving only the A1111 API.
 pub fn build_a1111_router(state: Arc<AppState>) -> Router {
     let cors = tower_http::cors::CorsLayer::permissive();
+    let trace = tower_http::trace::TraceLayer::new_for_http();
 
     Router::new()
         .merge(a1111::router())
         .layer(cors)
+        .layer(trace)
         .with_state(state)
 }
 
@@ -71,11 +75,13 @@ pub fn build_a1111_router(state: Arc<AppState>) -> Router {
 /// Useful for tests that run both APIs on a single ephemeral port.
 pub fn build_router(state: Arc<AppState>) -> Router {
     let cors = tower_http::cors::CorsLayer::permissive();
+    let trace = tower_http::trace::TraceLayer::new_for_http();
 
     Router::new()
         .merge(a1111::router())
         .merge(comfyui::router())
         .layer(cors)
+        .layer(trace)
         .with_state(state)
 }
 
@@ -99,9 +105,36 @@ pub async fn run(
     tracing::info!(%a1111_addr, "starting A1111 API server");
     let a1111_listener = TcpListener::bind(a1111_addr).await?;
 
+    let shutdown = async {
+        #[cfg(unix)]
+        {
+            use tokio::signal::unix::{SignalKind, signal};
+            let mut sigterm =
+                signal(SignalKind::terminate()).expect("failed to listen for SIGTERM");
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {},
+                _ = sigterm.recv() => {},
+            }
+        }
+        #[cfg(not(unix))]
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to listen for Ctrl-C");
+        tracing::info!("received shutdown signal, shutting down");
+    };
+    let (shutdown_tx, mut shutdown_rx1) = tokio::sync::watch::channel(());
+    let mut shutdown_rx2 = shutdown_tx.subscribe();
+
+    tokio::spawn(async move {
+        shutdown.await;
+        let _ = shutdown_tx.send(());
+    });
+
     tokio::select! {
-        result = axum::serve(comfyui_listener, comfyui_app) => result?,
-        result = axum::serve(a1111_listener, a1111_app) => result?,
+        result = axum::serve(comfyui_listener, comfyui_app)
+            .with_graceful_shutdown(async move { shutdown_rx1.changed().await.ok(); }) => result?,
+        result = axum::serve(a1111_listener, a1111_app)
+            .with_graceful_shutdown(async move { shutdown_rx2.changed().await.ok(); }) => result?,
     }
 
     Ok(())

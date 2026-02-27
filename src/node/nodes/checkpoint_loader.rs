@@ -22,6 +22,46 @@ use burn::tensor::Device;
 use safetensors::SafeTensors;
 use std::path::{Path, PathBuf};
 
+/// Resolve a checkpoint name to a concrete `.safetensors` path.
+///
+/// Clients may send the checkpoint as a bare filename (`model.safetensors`),
+/// a stem without extension (`model`), or the A1111 title format
+/// (`model [abc123]`). This function normalises all of those to a real path
+/// under `<models_dir>/checkpoints/`.
+fn resolve_checkpoint(models_dir: &Path, name: &Path) -> Result<PathBuf, NodeError> {
+    let ckpt_dir = models_dir.join("checkpoints");
+
+    // Strip A1111 title hash suffix, e.g. "modelName [abc123def0]" → "modelName"
+    let name_str = name.to_string_lossy();
+    let clean: &str = match name_str.rfind(" [") {
+        Some(idx) => &name_str[..idx],
+        None => &name_str,
+    };
+    let mut candidate = ckpt_dir.join(clean);
+
+    // If it already has .safetensors and exists, use it directly.
+    if candidate.extension().is_some_and(|e| e == "safetensors") && candidate.is_file() {
+        return Ok(candidate);
+    }
+
+    // Try appending .safetensors
+    candidate.set_extension("safetensors");
+    if candidate.is_file() {
+        return Ok(candidate);
+    }
+
+    Err(NodeError::Load(crate::model_loader::LoadError::Io(
+        std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!(
+                "checkpoint not found for {:?} in {}",
+                name.display(),
+                ckpt_dir.display()
+            ),
+        ),
+    )))
+}
+
 /// Loads a SD checkpoint and returns model/clip/vae handles.
 ///
 /// ComfyUI equivalent: `CheckpointLoaderSimple`
@@ -66,7 +106,7 @@ impl Node for CheckpointLoaderSimple {
         _inputs: &[ResolvedInput],
         ctx: &mut ExecutionContext,
     ) -> Result<Vec<NodeValue>, NodeError> {
-        let ckpt_path = ctx.models_dir().join("checkpoints").join(&self.ckpt_name);
+        let ckpt_path = resolve_checkpoint(ctx.models_dir(), &self.ckpt_name)?;
         tracing::info!(path = %ckpt_path.display(), "loading checkpoint");
 
         let file = SafeTensorsFile::open(&ckpt_path)?;

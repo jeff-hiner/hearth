@@ -2,7 +2,7 @@
 
 use crate::sampling::{SamplerKind, SchedulerKind};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
+use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
 /// Request body for `POST /prompt`.
 #[derive(Debug, Deserialize)]
@@ -292,7 +292,8 @@ fn deserialize_enable_disable<'de, D>(deserializer: D) -> Result<bool, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    match <&str>::deserialize(deserializer)? {
+    let s: Cow<'de, str> = Deserialize::deserialize(deserializer)?;
+    match s.as_ref() {
         "enable" => Ok(true),
         "disable" => Ok(false),
         other => Err(serde::de::Error::unknown_variant(

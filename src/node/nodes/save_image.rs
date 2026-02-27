@@ -8,6 +8,7 @@ use crate::{
     types::Backend,
 };
 use burn::tensor::Tensor;
+use std::path::Path;
 
 /// Saves an image tensor to disk.
 ///
@@ -60,6 +61,8 @@ impl Node for SaveImage {
         let tensor: &Tensor<Backend, 4> = &image.data;
         let [batch, channels, height, width] = tensor.shape().dims();
 
+        let mut counter = 0usize;
+
         for b in 0..batch {
             let single = tensor
                 .clone()
@@ -75,9 +78,7 @@ impl Node for SaveImage {
                 pixel[2] = to_u8(data[2 * hw + i]);
             }
 
-            let path = ctx
-                .output_dir()
-                .join(format!("{}_{:05}.png", self.filename_prefix, b));
+            let path = next_available_path(ctx.output_dir(), &self.filename_prefix, &mut counter);
             let img =
                 image::RgbImage::from_raw(width as u32, height as u32, rgb).ok_or_else(|| {
                     NodeError::Execution {
@@ -92,6 +93,18 @@ impl Node for SaveImage {
         }
 
         Ok(vec![])
+    }
+}
+
+/// Find the next available filename `{prefix}_{counter:05}.png` in `dir`, skipping any that
+/// already exist.
+fn next_available_path(dir: &Path, prefix: &str, counter: &mut usize) -> std::path::PathBuf {
+    loop {
+        let path = dir.join(format!("{}_{:05}.png", prefix, *counter));
+        *counter += 1;
+        if !path.exists() {
+            return path;
+        }
     }
 }
 

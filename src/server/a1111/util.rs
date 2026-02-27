@@ -151,11 +151,21 @@ pub(super) fn apply_controlnet_units(
     pos_cond_id: NodeId,
     pos_cond_output: usize,
 ) -> Result<(NodeId, usize), ApiError> {
-    let units = match scripts {
-        Some(AlwaysOnScripts {
-            controlnet: Some(cn_args),
-        }) => &cn_args.args,
-        _ => return Ok((pos_cond_id, pos_cond_output)),
+    let scripts = match scripts {
+        Some(s) => s,
+        None => return Ok((pos_cond_id, pos_cond_output)),
+    };
+
+    for key in scripts.unknown.keys() {
+        tracing::warn!(
+            extension = %key,
+            "unrecognized alwayson_scripts extension (ignored)"
+        );
+    }
+
+    let units = match &scripts.controlnet {
+        Some(cn_args) => &cn_args.args,
+        None => return Ok((pos_cond_id, pos_cond_output)),
     };
 
     let mut current_cond_id = pos_cond_id;

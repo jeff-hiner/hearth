@@ -26,13 +26,22 @@ pub(super) async fn img2img(
     State(state): State<Arc<AppState>>,
     Json(req): Json<Img2ImgRequest>,
 ) -> Result<Json<Txt2ImgResponse>, ApiError> {
+    let cn_unit_count = req
+        .alwayson_scripts
+        .as_ref()
+        .and_then(|s| s.controlnet.as_ref())
+        .map_or(0, |cn| cn.args.iter().filter(|u| u.enabled).count());
     tracing::info!(
         prompt = %req.prompt,
         width = req.width,
         height = req.height,
         steps = req.steps,
         denoise = req.denoising_strength,
+        sampler = %req.sampler_name,
+        scheduler = %req.scheduler,
         has_mask = req.mask.is_some(),
+        controlnet_units = cn_unit_count,
+        has_alwayson_scripts = req.alwayson_scripts.is_some(),
         "img2img request"
     );
 
@@ -67,34 +76,33 @@ pub(super) async fn img2img(
     let init_image = decode_base64_image(init_b64)?;
 
     // Determine checkpoint
-    let ckpt_name = req
+    let ckpt_name = match req
         .override_settings
         .as_ref()
         .and_then(|s| s.sd_model_checkpoint.clone())
-        .or_else(|| {
-            let opts = state.options.blocking_lock();
+    {
+        Some(name) => name,
+        None => {
+            let opts = state.options.lock().await;
             if opts.sd_model_checkpoint.is_empty() {
-                None
-            } else {
-                Some(opts.sd_model_checkpoint.clone())
+                return Err(ApiError::BadRequest(
+                    "no checkpoint specified: set sd_model_checkpoint in options or override_settings"
+                        .to_string(),
+                ));
             }
-        })
-        .ok_or_else(|| {
-            ApiError::BadRequest(
-                "no checkpoint specified: set sd_model_checkpoint in options or override_settings"
-                    .to_string(),
-            )
-        })?;
+            opts.sd_model_checkpoint.clone()
+        }
+    };
 
     // Parse sampler/scheduler
     let sampler_kind: SamplerKind = req
         .sampler_name
         .parse()
-        .map_err(|e: String| ApiError::BadRequest(e))?;
+        .map_err(|e: strum::ParseError| ApiError::BadRequest(e.to_string()))?;
     let scheduler_kind: SchedulerKind = req
         .scheduler
         .parse()
-        .map_err(|e: String| ApiError::BadRequest(e))?;
+        .map_err(|e: strum::ParseError| ApiError::BadRequest(e.to_string()))?;
 
     // Resolve seed
     let seed = if req.seed < 0 {

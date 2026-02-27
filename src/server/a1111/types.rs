@@ -1,6 +1,67 @@
 //! A1111 API request/response types.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
+use serde_with::{DisplayFromStr, PickFirst, TryFromInto, serde_as};
+use strum::{Display, EnumString, FromRepr};
+
+/// Resize mode for ControlNet units and img2img requests.
+///
+/// Clients may send this as either a `usize` (`0`, `1`, `2`) or the A1111
+/// human-readable string (`"Just Resize"`, `"Crop and Resize"`, …).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Display, EnumString, FromRepr)]
+#[repr(usize)]
+pub enum ResizeMode {
+    #[default]
+    #[strum(serialize = "Just Resize")]
+    JustResize = 0,
+    #[strum(serialize = "Crop and Resize")]
+    CropAndResize = 1,
+    #[strum(serialize = "Resize and Fill")]
+    ResizeAndFill = 2,
+}
+
+impl TryFrom<usize> for ResizeMode {
+    type Error = &'static str;
+    fn try_from(v: usize) -> Result<Self, Self::Error> {
+        Self::from_repr(v).ok_or("unknown resize_mode variant")
+    }
+}
+
+impl From<ResizeMode> for usize {
+    fn from(m: ResizeMode) -> usize {
+        m as usize
+    }
+}
+
+/// Control mode for ControlNet units.
+///
+/// Clients may send this as either a `usize` or the A1111 human-readable string.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Display, EnumString, FromRepr)]
+#[repr(usize)]
+pub enum ControlMode {
+    #[default]
+    #[strum(serialize = "Balanced")]
+    Balanced = 0,
+    #[strum(serialize = "My prompt is more important")]
+    PromptPriority = 1,
+    #[strum(serialize = "ControlNet is more important")]
+    ControlNetPriority = 2,
+}
+
+impl TryFrom<usize> for ControlMode {
+    type Error = &'static str;
+    fn try_from(v: usize) -> Result<Self, Self::Error> {
+        Self::from_repr(v).ok_or("unknown control_mode variant")
+    }
+}
+
+impl From<ControlMode> for usize {
+    fn from(m: ControlMode) -> usize {
+        m as usize
+    }
+}
 
 /// Request body for `POST /sdapi/v1/txt2img`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -204,11 +265,23 @@ pub(super) struct SetOptionsRequest {
 /// Wrapper for A1111's `alwayson_scripts` request field.
 ///
 /// Extensions like ControlNet send their parameters nested under named keys.
+/// Unknown extension keys are captured in `unknown` and logged as warnings
+/// so we notice when clients send data we silently drop.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AlwaysOnScripts {
     /// ControlNet extension arguments.
-    #[serde(default)]
+    ///
+    /// The A1111 ControlNet extension registers with `title() = "ControlNet"`,
+    /// so clients (including StableProjectorz) send the key as `"ControlNet"`.
+    /// The alias ensures we accept both casings.
+    #[serde(default, alias = "ControlNet")]
     pub controlnet: Option<ControlNetArgs>,
+
+    /// Any extension keys we don't explicitly handle.
+    ///
+    /// Captured so we can warn about them rather than silently dropping.
+    #[serde(flatten)]
+    pub unknown: HashMap<String, serde_json::Value>,
 }
 
 /// ControlNet extension arguments within `alwayson_scripts`.
@@ -220,6 +293,7 @@ pub struct ControlNetArgs {
 }
 
 /// A single ControlNet unit in an A1111 request.
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ControlNetUnit {
     /// Whether this unit is active.
@@ -237,24 +311,27 @@ pub struct ControlNetUnit {
     /// Base64-encoded control image.
     #[serde(default)]
     pub image: Option<String>,
-    /// Resize mode (0=just resize, 1=crop, 2=resize and fill).
+    /// Resize mode — accepts `0`/`1`/`2` or `"Just Resize"`/`"Crop and Resize"`/`"Resize and Fill"`.
+    #[serde_as(as = "PickFirst<(TryFromInto<usize>, DisplayFromStr)>")]
     #[serde(default)]
-    pub resize_mode: u32,
+    pub resize_mode: ResizeMode,
     /// Step fraction at which ControlNet activates (0.0–1.0).
     #[serde(default)]
     pub guidance_start: f32,
     /// Step fraction at which ControlNet deactivates (0.0–1.0).
     #[serde(default = "default_denoise")]
     pub guidance_end: f32,
-    /// Control mode (0=balanced, 1=prompt priority, 2=controlnet priority).
+    /// Control mode — accepts `0`/`1`/`2` or `"Balanced"`/`"My prompt is more important"`/`"ControlNet is more important"`.
+    #[serde_as(as = "PickFirst<(TryFromInto<usize>, DisplayFromStr)>")]
     #[serde(default)]
-    pub control_mode: u32,
+    pub control_mode: ControlMode,
     /// Whether to auto-detect preprocessor resolution.
     #[serde(default)]
     pub pixel_perfect: bool,
 }
 
 /// Request body for `POST /sdapi/v1/img2img`.
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct Img2ImgRequest {
     /// Base64-encoded init images.
@@ -298,9 +375,10 @@ pub(super) struct Img2ImgRequest {
     /// Number of iterations (batches).
     #[serde(default = "default_1")]
     pub(super) n_iter: u32,
-    /// Resize mode for init image (0=just resize, 1=crop and resize, 2=resize and fill).
+    /// Resize mode for init image — accepts integer or string form.
+    #[serde_as(as = "PickFirst<(TryFromInto<usize>, DisplayFromStr)>")]
     #[serde(default)]
-    pub(super) resize_mode: u32,
+    pub(super) resize_mode: ResizeMode,
     /// How to fill the masked area before denoising (0=fill, 1=original, 2=latent noise, 3=latent nothing).
     #[serde(default)]
     pub(super) inpainting_fill: u32,
@@ -575,7 +653,7 @@ mod tests {
         assert_eq!(req.seed, -1);
         assert_eq!(req.batch_size, 1);
         assert_eq!(req.n_iter, 1);
-        assert_eq!(req.resize_mode, 0);
+        assert_eq!(req.resize_mode, ResizeMode::JustResize);
         assert_eq!(req.inpainting_fill, 0);
         assert_eq!(req.inpaint_full_res, 0);
         assert_eq!(req.inpaint_full_res_padding, 32);
@@ -627,10 +705,10 @@ mod tests {
         assert_eq!(unit.model, "");
         assert_eq!(unit.weight, 1.0);
         assert_eq!(unit.image, None);
-        assert_eq!(unit.resize_mode, 0);
+        assert_eq!(unit.resize_mode, ResizeMode::JustResize);
         assert_eq!(unit.guidance_start, 0.0);
         assert_eq!(unit.guidance_end, 1.0);
-        assert_eq!(unit.control_mode, 0);
+        assert_eq!(unit.control_mode, ControlMode::Balanced);
         assert!(!unit.pixel_perfect);
     }
 
@@ -642,10 +720,10 @@ mod tests {
             model: "control_v11p_sd15_canny.safetensors".to_string(),
             weight: 0.8,
             image: Some("base64data".to_string()),
-            resize_mode: 1,
+            resize_mode: ResizeMode::CropAndResize,
             guidance_start: 0.1,
             guidance_end: 0.9,
-            control_mode: 2,
+            control_mode: ControlMode::ControlNetPriority,
             pixel_perfect: true,
         };
         let json = serde_json::to_string(&unit).expect("serialize");
@@ -694,6 +772,42 @@ mod tests {
     }
 
     #[test]
+    fn alwayson_scripts_capital_controlnet() {
+        // A1111's ControlNet extension registers with title() = "ControlNet",
+        // so SPZ and other clients send the key with that exact casing.
+        let json = serde_json::json!({
+            "ControlNet": {
+                "args": [{
+                    "enabled": true,
+                    "module": "none",
+                    "model": "control_v11f1p_sd15_depth.safetensors",
+                    "weight": 1.0,
+                    "image": "b64img"
+                }]
+            }
+        });
+        let scripts: AlwaysOnScripts = serde_json::from_value(json).expect("deserialize");
+        let cn = scripts.controlnet.expect("ControlNet key should be accepted");
+        assert_eq!(cn.args.len(), 1);
+        assert_eq!(cn.args[0].model, "control_v11f1p_sd15_depth.safetensors");
+        assert!(scripts.unknown.is_empty());
+    }
+
+    #[test]
+    fn alwayson_scripts_unknown_extensions_captured() {
+        let json = serde_json::json!({
+            "controlnet": { "args": [] },
+            "SomeOtherExtension": { "args": [1, 2, 3] },
+            "ADetailer": { "args": [] }
+        });
+        let scripts: AlwaysOnScripts = serde_json::from_value(json).expect("deserialize");
+        assert!(scripts.controlnet.is_some());
+        assert_eq!(scripts.unknown.len(), 2);
+        assert!(scripts.unknown.contains_key("SomeOtherExtension"));
+        assert!(scripts.unknown.contains_key("ADetailer"));
+    }
+
+    #[test]
     fn txt2img_request_with_controlnet() {
         let json = serde_json::json!({
             "prompt": "a cat",
@@ -711,5 +825,28 @@ mod tests {
         let cn = scripts.controlnet.expect("controlnet present");
         assert_eq!(cn.args.len(), 1);
         assert_eq!(cn.args[0].model, "control_v11p_sd15_canny.safetensors");
+    }
+
+    #[test]
+    fn controlnet_unit_string_resize_and_control_mode() {
+        // StableProjectorz sends these as human-readable strings
+        let json = serde_json::json!({
+            "resize_mode": "Crop and Resize",
+            "control_mode": "ControlNet is more important",
+        });
+        let unit: ControlNetUnit = serde_json::from_value(json).expect("deserialize");
+        assert_eq!(unit.resize_mode, ResizeMode::CropAndResize);
+        assert_eq!(unit.control_mode, ControlMode::ControlNetPriority);
+    }
+
+    #[test]
+    fn controlnet_unit_integer_resize_and_control_mode() {
+        let json = serde_json::json!({
+            "resize_mode": 2,
+            "control_mode": 1,
+        });
+        let unit: ControlNetUnit = serde_json::from_value(json).expect("deserialize");
+        assert_eq!(unit.resize_mode, ResizeMode::ResizeAndFill);
+        assert_eq!(unit.control_mode, ControlMode::PromptPriority);
     }
 }
