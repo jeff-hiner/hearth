@@ -5,6 +5,7 @@ Requires: pip install huggingface-hub
 
 Files downloaded:
   models/checkpoints/v1-5-pruned-emaonly-fp16.safetensors           (~2.1 GB)
+  models/checkpoints/realisticVisionV51_v51VAE.safetensors          (~2.1 GB)
   models/clip/vocab.json                                             (~940 KB)
   models/clip/merges.txt                                             (~512 KB)
   models/controlnet/control_v11f1p_sd15_depth_fp16.safetensors      (~723 MB)
@@ -40,6 +41,11 @@ FILES = [
         "clip/merges.txt",
         "openai/clip-vit-large-patch14",
         "merges.txt",
+    ),
+    (
+        "checkpoints/realisticVisionV51_v51VAE.safetensors",
+        "lllyasviel/fav_models",
+        "fav/realisticVisionV51_v51VAE.safetensors",
     ),
     (
         "controlnet/control_v11f1p_sd15_depth_fp16.safetensors",
