@@ -1,9 +1,8 @@
 //! A1111 API request/response types.
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, PickFirst, TryFromInto, serde_as};
+use std::collections::HashMap;
 use strum::{Display, EnumString, FromRepr};
 
 /// Resize mode for ControlNet units and img2img requests.
@@ -787,7 +786,9 @@ mod tests {
             }
         });
         let scripts: AlwaysOnScripts = serde_json::from_value(json).expect("deserialize");
-        let cn = scripts.controlnet.expect("ControlNet key should be accepted");
+        let cn = scripts
+            .controlnet
+            .expect("ControlNet key should be accepted");
         assert_eq!(cn.args.len(), 1);
         assert_eq!(cn.args[0].model, "control_v11f1p_sd15_depth.safetensors");
         assert!(scripts.unknown.is_empty());
