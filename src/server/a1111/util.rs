@@ -189,8 +189,7 @@ pub(super) fn apply_controlnet_units(
             ApiError::BadRequest(format!("ControlNet unit {i} is enabled but has no image"))
         })?;
 
-        let control_image =
-            Image::new(Tensor::from_data(decode_base64_image(image_b64)?, device));
+        let control_image = Image::new(Tensor::from_data(decode_base64_image(image_b64)?, device));
 
         let loader_id = graph.add_node(Box::new(ControlNetLoader::new(unit.model.clone().into())));
         let apply_id = graph.add_node(Box::new(ControlNetApply::new(

@@ -165,7 +165,10 @@ fn main() -> Result<(), Error> {
     // Pre-register the wgpu runtime with tasks_max=512 to keep the GPU saturated.
     init_setup::<AutoGraphicsApi>(
         &WgpuDevice::DefaultDevice,
-        RuntimeOptions { tasks_max: 512, ..Default::default() },
+        RuntimeOptions {
+            tasks_max: 512,
+            ..Default::default()
+        },
     );
     let device: Device<Backend> = Default::default();
 

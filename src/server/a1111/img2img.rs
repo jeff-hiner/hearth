@@ -73,8 +73,10 @@ pub(super) async fn img2img(
     })?;
 
     // Decode init image → [1, H, W, 3] in [0, 1]
-    let init_image =
-        Image::new(Tensor::from_data(decode_base64_image(init_b64)?, &state.device));
+    let init_image = Image::new(Tensor::from_data(
+        decode_base64_image(init_b64)?,
+        &state.device,
+    ));
 
     // Determine checkpoint
     let ckpt_name = match req

@@ -42,7 +42,10 @@ impl AppState {
         // subsequent Default::default() device construction reuses this server.
         init_setup::<AutoGraphicsApi>(
             &WgpuDevice::DefaultDevice,
-            RuntimeOptions { tasks_max: 512, ..Default::default() },
+            RuntimeOptions {
+                tasks_max: 512,
+                ..Default::default()
+            },
         );
         let device: Device<Backend> = Default::default();
         let (progress_tx, progress_rx) = watch::channel(ProgressInfo::default());
