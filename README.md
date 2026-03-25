@@ -17,7 +17,7 @@ the nodes aren't written. Contributions and bug reports are welcome.
   on your laptop's integrated GPU? You probably can! (Given enough time.)
 - **Single binary** means no Python runtime, no dependency management hell
 - Supports **both SD 1.5 and SDXL** txt2img with LoRA and ControlNet support
-- Run with the most common samplers (Euler, DPM++_SDE, etc) and schedulers (Normal, Karras)
+- Runs with the most common samplers (Euler, DPM++ SDE, etc) and schedulers (Normal, Karras)
 - Preliminary **img2img support** (still needs polish)
 - **ComfyUI and A1111/Forge compatible APIs**
 
@@ -91,23 +91,7 @@ cargo run --release --example generate_xl -- "a mountain landscape at sunset"
 
 The first time you run, the binary has to build Vulkan shaders. Be patient.
 
-Both examples accept options for tuning the output:
-
-```
-Options:
-  -n, --negative <TEXT>        Negative prompt [default: ""]
-  -s, --steps <N>              Sampling steps [default: 20]
-  -c, --cfg <SCALE>            CFG guidance scale [default: 7.5]
-  -o, --output <PATH>          Output file [default: output.png / output_xl.png]
-      --seed <N>               Random seed for reproducibility
-      --sampler <NAME>         euler, euler_a, dpm_pp_2m, dpm_pp_sde [default: euler]
-      --scheduler <NAME>       normal, karras [default: normal]
-      --lora <PATH>            LoRA file (repeatable)
-      --lora-strength <F>      LoRA strength, one per --lora [default: 1.0]
-      --cn-model <PATH>        ControlNet model (repeatable)
-      --cn-image <PATH>        ControlNet hint image (b&w mask), one per --cn-model
-      --cn-weight <F>          ControlNet strength [default: 1.0]
-```
+Both examples accept options for tuning the output. Run with `--help` for options.
 
 Example with LoRA and ControlNet:
 
@@ -158,7 +142,7 @@ Hearth uses two layers of GPU shader caching. When modifying kernel source, **bo
 must be cleared or stale shaders will be silently reused:
 
 1. `cargo clean` regenerates compiled cubecl IR
-2. Delete the cubecl pipeline cache forces Vulkan shader recompilation
+2. Deleting the cubecl pipeline cache forces Vulkan shader recompilation
    - Linux: `~/.local/share/cubecl/pipeline_cache`
    - macOS: `~/Library/Application Support/cubecl/pipeline_cache`
    - Windows: `%LOCALAPPDATA%\cubecl\pipeline_cache`
